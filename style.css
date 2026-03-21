@@ -1,0 +1,82 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+header {
+  text-align: center;
+  padding: 10px;
+}
+
+header h1 {
+  margin: 0;
+  font-weight: bold;
+  color: black;
+}
+
+header span {
+  color: gray;
+  font-size: 14px;
+}
+
+/* Container */
+.container {
+  display: flex;
+  width: 200%;
+  height: calc(100vh - 60px);
+  transition: transform 0.4s ease;
+}
+
+/* Pages */
+.page {
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Buttons */
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn {
+  padding: 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  color: white;
+}
+
+.pink { background: #ff7eb3; }
+.orange { background: #ff9a3c; }
+.blue { background: #4da6ff; }
+.green { background: #4cd964; }
+
+/* Table */
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+}
+
+td, th {
+  border-bottom: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+/* Export button */
+#exportBtn {
+  display: block;
+  margin: 100px auto;
+  padding: 15px 30px;
+  font-size: 18px;
+}
+
+pre {
+  white-space: pre-wrap;
+  padding: 10px;
+}
