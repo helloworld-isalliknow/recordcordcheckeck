@@ -1,1 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>$ Recorder</title>
+  <link rel="icon1.png" href="icon1.png">
+</head>
+<body>
 
+  <!-- Header -->
+  <header>
+    <h1>$ Recorder</h1>
+    <span id="time"></span>
+  </header>
+
+  <!-- Slider Container -->
+  <div class="container" id="container">
+
+    <!-- Page 1 -->
+    <div class="page" id="page1">
+      <div class="buttons">
+        <button class="btn pink" data-type="Courses">Courses</button>
+        <button class="btn orange" data-type="Indulgence">Indulgence</button>
+        <button class="btn blue" data-type="Essentials">Essentials</button>
+        <button class="btn green" data-type="Moves">Moves</button>
+      </div>
+
+      <div class="date-picker">
+        <input type="date" id="datePicker" />
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="recordTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Page 2 -->
+    <div class="page" id="page2">
+      <button id="exportBtn">Export JSON</button>
+      <pre id="output"></pre>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
