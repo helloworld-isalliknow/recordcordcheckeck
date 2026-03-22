@@ -15,7 +15,6 @@ body {
   overflow: hidden;
 }
 
-/* Header */
 header {
   text-align: center;
   padding: 12px;
@@ -33,7 +32,6 @@ header span {
   color: gray;
 }
 
-/* Slider */
 .container {
   display: flex;
   width: 200vw;
@@ -47,7 +45,7 @@ header span {
   overflow-y: auto;
 }
 
-/* Buttons */
+/* 按钮更小 */
 .buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -55,10 +53,10 @@ header span {
 }
 
 .btn {
-  padding: 12px;            /* ✅ 再缩小 */
+  padding: 10px;
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: bold;
   color: white;
 }
@@ -68,9 +66,9 @@ header span {
 .blue { background: #4da6ff; }
 .green { background: #4cd964; }
 
-/* Date */
+/* 日期 */
 .date-box {
-  margin-top: 14px;
+  margin-top: 12px;
   display: flex;
   justify-content: center;
   gap: 8px;
@@ -87,23 +85,21 @@ input[type="date"] {
   color: #555;
 }
 
-/* Table */
+/* 表格 */
 table {
   width: 100%;
   margin-top: 10px;
   background: white;
   border-radius: 8px;
-  overflow: hidden;
 }
 
 td, th {
-  padding: 6px;   /* 更紧凑 */
+  padding: 6px;
   border-bottom: 1px solid #eee;
   text-align: center;
 }
 
 .amount-main {
-  font-size: 15px;
   font-weight: bold;
 }
 
@@ -117,14 +113,11 @@ td, th {
   font-weight: bold;
 }
 
-/* Export */
 #exportBtn {
   width: 80%;
   margin: 120px auto;
   display: block;
   padding: 12px;
-  font-size: 15px;
-  border-radius: 10px;
 }
 </style>
 </head>
@@ -138,110 +131,107 @@ td, th {
 
 <div class="container" id="container">
 
-  <!-- Page 1 -->
-  <div class="page">
-    <div class="buttons">
-      <button class="btn pink" data-type="Courses">Courses</button>
-      <button class="btn orange" data-type="Indulgence">Indulgence</button>
-      <button class="btn blue" data-type="Essentials">Essentials</button>
-      <button class="btn green" data-type="Moves">Moves</button>
-    </div>
-
-    <div class="date-box">
-      <input type="date" id="datePicker">
-      <div class="week-display" id="weekDisplay"></div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Amount</th>
-        </tr>
-      </thead>
-      <tbody id="recordTable"></tbody>
-    </table>
+<div class="page">
+  <div class="buttons">
+    <button class="btn pink" data-type="Courses">Courses</button>
+    <button class="btn orange" data-type="Indulgence">Indulgence</button>
+    <button class="btn blue" data-type="Essentials">Essentials</button>
+    <button class="btn green" data-type="Moves">Moves</button>
   </div>
 
-  <!-- Page 2 -->
-  <div class="page">
-    <button id="exportBtn">Export JSON File</button>
+  <div class="date-box">
+    <input type="date" id="datePicker">
+    <div id="weekDisplay"></div>
   </div>
+
+  <table>
+    <thead>
+      <tr><th>Type</th><th>Amount</th></tr>
+    </thead>
+    <tbody id="recordTable"></tbody>
+  </table>
+</div>
+
+<div class="page">
+  <button id="exportBtn">Export JSON File</button>
+</div>
 
 </div>
 
 <script>
 // ===== 时间 =====
-function updateTime() {
+setInterval(()=>{
   document.getElementById("time").innerText =
     new Date().toLocaleString();
-}
-setInterval(updateTime, 1000);
-updateTime();
+},1000);
 
-// ===== 数据 =====
+// ===== 数据（新结构）=====
 let data = JSON.parse(localStorage.getItem("records")) || {};
 
 // ===== DOM =====
 const datePicker = document.getElementById("datePicker");
-const weekDisplay = document.getElementById("weekDisplay");
 const table = document.getElementById("recordTable");
+const weekDisplay = document.getElementById("weekDisplay");
 
-// ===== 标准日期函数（关键修复）=====
-function getDateKey(dateObj) {
-  return dateObj.toISOString().split("T")[0];
-}
+// ===== 初始化日期 =====
+const today = new Date().toISOString().split("T")[0];
+datePicker.value = today;
 
-// 初始化日期
-const today = new Date();
-datePicker.value = getDateKey(today);
+// ===== 周 =====
+function updateWeek(){
+  const d = new Date(datePicker.value);
+  let day = d.getDay();
+  if(day===0) day=7;
 
-// ===== 周计算 =====
-function updateWeek() {
-  const date = new Date(datePicker.value);
-  let day = date.getDay();
-  if (day === 0) day = 7;
-
-  const start = new Date(date);
-  start.setDate(date.getDate() - day + 1);
+  const start = new Date(d);
+  start.setDate(d.getDate()-day+1);
 
   const end = new Date(start);
-  end.setDate(start.getDate() + 6);
+  end.setDate(start.getDate()+6);
 
   weekDisplay.innerText =
     `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
 }
 
-// ===== 渲染表格 =====
-function renderTable() {
+// ===== 渲染（核心重写）=====
+function renderTable(){
   table.innerHTML = "";
 
-  const dateKey = datePicker.value;
-  const records = data[dateKey] || {};
+  const list = data[datePicker.value] || [];
+
+  if(list.length === 0){
+    table.innerHTML = "<tr><td colspan='2'>No records</td></tr>";
+    return;
+  }
+
+  // 分组
+  const grouped = {};
+  list.forEach(item=>{
+    if(!grouped[item.type]) grouped[item.type] = [];
+    grouped[item.type].push(item.amount);
+  });
 
   let total = 0;
 
-  Object.keys(records).forEach(type => {
-    const values = records[type];
-    const sum = values.reduce((a, b) => a + b, 0);
+  for(let type in grouped){
+    const values = grouped[type];
+    const sum = values.reduce((a,b)=>a+b,0);
     total += sum;
 
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td>${type}</td>
       <td>
         <div class="amount-main">${sum}</div>
         <div class="amount-sub">=${values.join("+")}</div>
       </td>
     `;
+    table.appendChild(tr);
+  }
 
-    table.appendChild(row);
-  });
-
-  // ✅ 总计行
+  // 总计
   const totalRow = document.createElement("tr");
-  totalRow.className = "total-row";
+  totalRow.className="total-row";
   totalRow.innerHTML = `
     <td>TOTAL</td>
     <td>${total}</td>
@@ -249,25 +239,25 @@ function renderTable() {
   table.appendChild(totalRow);
 }
 
-// ===== 输入 =====
-document.querySelectorAll(".btn").forEach(btn => {
-  btn.onclick = () => {
-    const type = btn.dataset.type;
-    const input = prompt(`Enter amount for ${type}:`);
+// ===== 输入（稳定版）=====
+document.querySelectorAll(".btn").forEach(btn=>{
+  btn.onclick = ()=>{
+    const val = prompt("Enter amount:");
+    if(val===null) return;
 
-    if (input === null) return;
-
-    if (!/^-?\d+$/.test(input)) {
-      alert("❌ Only integers allowed");
+    if(!/^-?\d+$/.test(val)){
+      alert("Only numbers");
       return;
     }
 
-    const dateKey = datePicker.value;
+    const date = datePicker.value;
 
-    if (!data[dateKey]) data[dateKey] = {};
-    if (!data[dateKey][type]) data[dateKey][type] = [];
+    if(!data[date]) data[date] = [];
 
-    data[dateKey][type].push(Number(input));
+    data[date].push({
+      type: btn.dataset.type,
+      amount: Number(val)
+    });
 
     localStorage.setItem("records", JSON.stringify(data));
 
@@ -275,44 +265,33 @@ document.querySelectorAll(".btn").forEach(btn => {
   };
 });
 
-// ===== 日期切换 =====
-datePicker.onchange = () => {
+// 日期切换
+datePicker.onchange = ()=>{
   updateWeek();
   renderTable();
 };
 
-// ===== 导出 =====
-document.getElementById("exportBtn").onclick = () => {
-  const blob = new Blob(
-    [JSON.stringify(data, null, 2)],
-    { type: "application/json" }
-  );
-
+// 导出
+document.getElementById("exportBtn").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(data,null,2)]);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `records-${datePicker.value}.json`;
+  a.download = "records.json";
   a.click();
 };
 
-// ===== 滑动 =====
-let startX = 0;
-let startY = 0;
-let currentPage = 0;
+// 滑动（简单稳定版）
+let startX=0;
 
-const container = document.getElementById("container");
-
-document.addEventListener("touchstart", e => {
+document.addEventListener("touchstart",e=>{
   startX = e.touches[0].clientX;
-  startY = e.touches[0].clientY;
 });
 
-document.addEventListener("touchend", e => {
-  const dx = e.changedTouches[0].clientX - startX;
-  const dy = e.changedTouches[0].clientY - startY;
-
-  if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy)) {
-    currentPage = dx < 0 ? 1 : 0;
-    container.style.transform = `translateX(-${currentPage * 100}vw)`;
+document.addEventListener("touchend",e=>{
+  let dx = e.changedTouches[0].clientX - startX;
+  if(Math.abs(dx)>80){
+    document.getElementById("container").style.transform =
+      dx<0 ? "translateX(-100vw)" : "translateX(0)";
   }
 });
 
