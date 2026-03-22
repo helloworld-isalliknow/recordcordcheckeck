@@ -2,56 +2,64 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>$ Recorder</title>
-<link rel="icon1.png" href="icon1.png">
 
 <style>
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont;
+  background: #f5f5f5;
   overflow: hidden;
 }
 
+/* Header */
 header {
   text-align: center;
-  padding: 10px;
+  padding: 16px;
+  background: white;
 }
 
 header h1 {
   margin: 0;
+  font-size: 28px;
   font-weight: bold;
-  color: black;
 }
 
 header span {
+  font-size: 18px;
   color: gray;
-  font-size: 14px;
 }
 
+/* Slider */
 .container {
   display: flex;
-  width: 200%;
-  height: calc(100vh - 60px);
-  transition: transform 0.4s ease;
+  width: 200vw;
+  height: calc(100vh - 80px);
+  transition: transform 0.35s ease;
 }
 
+/* Page */
 .page {
-  width: 100%;
+  width: 100vw;
   padding: 20px;
-  box-sizing: border-box;
+  overflow-y: auto;
 }
 
+/* Buttons */
 .buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 16px;
 }
 
 .btn {
-  padding: 20px;
+  padding: 28px;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 18px;
+  font-size: 20px;
   color: white;
 }
 
@@ -60,28 +68,48 @@ header span {
 .blue { background: #4da6ff; }
 .green { background: #4cd964; }
 
-table {
-  width: 100%;
+/* Date area */
+.date-box {
   margin-top: 20px;
-  border-collapse: collapse;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
 }
 
-td, th {
-  border-bottom: 1px solid #ddd;
-  padding: 10px;
-  text-align: center;
-}
-
-#exportBtn {
-  display: block;
-  margin: 100px auto;
-  padding: 15px 30px;
+input[type="date"] {
+  padding: 12px;
   font-size: 18px;
 }
 
-pre {
-  white-space: pre-wrap;
-  padding: 10px;
+.week-display {
+  font-size: 18px;
+  color: #555;
+}
+
+/* Table */
+table {
+  width: 100%;
+  margin-top: 20px;
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  font-size: 18px;
+}
+
+td, th {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+/* Export */
+#exportBtn {
+  width: 80%;
+  margin: 120px auto 20px;
+  display: block;
+  padding: 18px;
+  font-size: 20px;
+  border-radius: 14px;
 }
 </style>
 </head>
@@ -104,8 +132,9 @@ pre {
       <button class="btn green" data-type="Moves">Moves</button>
     </div>
 
-    <div style="margin-top:15px;">
+    <div class="date-box">
       <input type="date" id="datePicker">
+      <div class="week-display" id="weekDisplay"></div>
     </div>
 
     <table>
@@ -121,8 +150,7 @@ pre {
 
   <!-- Page 2 -->
   <div class="page">
-    <button id="exportBtn">Export JSON</button>
-    <pre id="output"></pre>
+    <button id="exportBtn">Export JSON File</button>
   </div>
 
 </div>
@@ -141,8 +169,24 @@ let data = JSON.parse(localStorage.getItem("records")) || {};
 
 // ===== 日期 =====
 const datePicker = document.getElementById("datePicker");
-const today = new Date().toISOString().split("T")[0];
-datePicker.value = today;
+const weekDisplay = document.getElementById("weekDisplay");
+
+datePicker.value = new Date().toISOString().split("T")[0];
+
+// ===== 周计算 =====
+function updateWeek() {
+  const date = new Date(datePicker.value);
+  const day = date.getDay();
+
+  const start = new Date(date);
+  start.setDate(date.getDate() - day);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  weekDisplay.innerText =
+    `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+}
 
 // ===== 渲染 =====
 function renderTable() {
@@ -161,14 +205,14 @@ function renderTable() {
   });
 }
 
-// ===== 输入 =====
+// ===== 输入（支持负数）=====
 document.querySelectorAll(".btn").forEach(btn => {
   btn.onclick = () => {
     const type = btn.dataset.type;
     const input = prompt(`Enter amount for ${type}:`);
 
-    if (!/^\d+$/.test(input)) {
-      alert("❌ Only numbers allowed!");
+    if (!/^-?\d+$/.test(input)) {
+      alert("❌ Only integers allowed (can be negative)");
       return;
     }
 
@@ -176,10 +220,7 @@ document.querySelectorAll(".btn").forEach(btn => {
 
     if (!data[date]) data[date] = [];
 
-    data[date].push({
-      type,
-      amount: Number(input)
-    });
+    data[date].push({ type, amount: Number(input) });
 
     localStorage.setItem("records", JSON.stringify(data));
     renderTable();
@@ -187,35 +228,71 @@ document.querySelectorAll(".btn").forEach(btn => {
 });
 
 // ===== 日期切换 =====
-datePicker.onchange = renderTable;
+datePicker.onchange = () => {
+  renderTable();
+  updateWeek();
+};
 
-// ===== 导出 =====
+// ===== 导出文件 =====
 document.getElementById("exportBtn").onclick = () => {
-  document.getElementById("output").textContent =
-    JSON.stringify(data, null, 2);
+  const blob = new Blob(
+    [JSON.stringify(data, null, 2)],
+    { type: "application/json" }
+  );
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `records-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
 };
 
 // ===== 滑动 =====
 let startX = 0;
+let currentX = 0;
+let isDragging = false;
 let currentPage = 0;
+
 const container = document.getElementById("container");
 
-document.addEventListener("touchstart", e => {
-  startX = e.touches[0].clientX;
-});
+function start(e) {
+  isDragging = true;
+  startX = e.touches ? e.touches[0].clientX : e.clientX;
+}
 
-document.addEventListener("touchend", e => {
-  let diff = startX - e.changedTouches[0].clientX;
+function move(e) {
+  if (!isDragging) return;
+  currentX = e.touches ? e.touches[0].clientX : e.clientX;
+  let diff = currentX - startX;
 
-  if (diff > 50) currentPage = 1;
-  if (diff < -50) currentPage = 0;
-
+  container.style.transition = "none";
   container.style.transform =
-    `translateX(-${currentPage * 50}%)`;
-});
+    `translateX(calc(${-currentPage * 100}vw + ${diff}px))`;
+}
+
+function end() {
+  if (!isDragging) return;
+  isDragging = false;
+
+  let diff = currentX - startX;
+
+  if (diff < -50) currentPage = 1;
+  if (diff > 50) currentPage = 0;
+
+  container.style.transition = "0.35s";
+  container.style.transform = `translateX(-${currentPage * 100}vw)`;
+}
+
+document.addEventListener("touchstart", start);
+document.addEventListener("touchmove", move);
+document.addEventListener("touchend", end);
+
+document.addEventListener("mousedown", start);
+document.addEventListener("mousemove", move);
+document.addEventListener("mouseup", end);
 
 // 初始化
 renderTable();
+updateWeek();
 </script>
 
 </body>
