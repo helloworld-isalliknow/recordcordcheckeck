@@ -3,35 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="apple-touch-icon" href="apple-touch-icon1.png">
 <title>$ Recorder</title>
 
 <style>
-body { margin:0; font-family:Arial; background:#f5f5f5; }
+body { margin:0; font-family:Arial; background:#f5f5f5; overflow:hidden; }
 
 header { text-align:center; padding:10px; }
 header h1 { margin:0; font-weight:bold; }
 header span { color:gray; font-size:14px; }
 
-.container { display:flex; width:200%; height:calc(100vh - 60px); transition:0.3s; }
-.page { width:100%; padding:14px; box-sizing:border-box; overflow:auto; }
+/* 页面 */
+.container { display:flex; width:200%; height:100vh; transition:0.3s; }
+.page {
+  width:100%;
+  height:100vh;
+  padding:12px;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
 
 /* 日期 */
 #datePicker {
   display:block;
-  margin:0 auto 10px;
-  padding:8px 12px;
-  font-size:16px;
+  margin:0 auto 8px;
+  padding:6px 10px;
+  font-size:15px;
   border-radius:8px;
 }
 
-/* 表格（第一页） */
+/* 表格 */
 table {
   width:100%;
   background:white;
   border-radius:8px;
   border-collapse:collapse;
-  margin-top:10px;
 }
 
 td,th {
@@ -56,20 +63,19 @@ td,th {
 }
 
 /* 第二页表 */
-.big-table th:nth-child(1), .big-table td:nth-child(1){ width:35%; }
-.big-table th:nth-child(2), .big-table td:nth-child(2){ width:65%; }
+.big-table th:nth-child(1), .big-table td:nth-child(1){ width:30%; }
+.big-table th:nth-child(2), .big-table td:nth-child(2){ width:70%; }
 
-/* 按钮 2列3行 */
+/* 按钮 2x3 */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
   grid-template-rows:repeat(3, auto);
-  gap:10px;
-  margin-top:20px;
+  gap:8px;
 }
 
 .btn {
-  padding:12px;
+  padding:10px;
   border:none;
   border-radius:10px;
   font-size:15px;
@@ -82,8 +88,9 @@ td,th {
 .orange{background:#ff9a3c;}
 .blue{background:#4da6ff;}
 .green{background:#4cd964;}
-.gray-btn{background:#ccc; color:white;}
 .delete-btn{background:#999;}
+.gray-btn{background:#ccc; color:white;}
+
 </style>
 </head>
 
@@ -98,6 +105,7 @@ td,th {
 
 <!-- Page1 -->
 <div class="page">
+<div>
 <input type="date" id="datePicker">
 
 <table>
@@ -106,6 +114,7 @@ td,th {
 </thead>
 <tbody id="recordTable"></tbody>
 </table>
+</div>
 
 <div class="buttons">
 <button class="btn pink" data-type="Courses">Courses</button>
@@ -142,14 +151,13 @@ const BASE_MONTH=700;
 const datePicker=document.getElementById("datePicker");
 datePicker.value=new Date().toISOString().split("T")[0];
 
-// 渲染第一页表
+// ===== 渲染第一页 =====
 function renderTable(){
   const key=datePicker.value;
   const dayList=data[key]||[];
   const table=document.getElementById("recordTable");
   table.innerHTML="";
 
-  // 月统计
   const month=new Date(key).getMonth();
   let monthTotals={}; types.forEach(t=>monthTotals[t]=0);
 
@@ -179,18 +187,15 @@ function renderTable(){
     </tr>`;
   });
 
-  const residualDay=BASE_DAY-dayTotal;
-  const residualMonth=BASE_MONTH-monthSum;
-
   table.innerHTML+=`
   <tr class="total-row">
     <td>Day TOTAL</td>
-    <td>${dayTotal}<div class="residual">Residuals=${residualDay}</div></td>
-    <td>${monthSum}<div class="residual">Residuals=${residualMonth}</div></td>
+    <td>${dayTotal}<div class="residual">Residuals=${BASE_DAY-dayTotal}</div></td>
+    <td>${monthSum}<div class="residual">Residuals=${BASE_MONTH-monthSum}</div></td>
   </tr>`;
 }
 
-// 渲染第二页
+// ===== 渲染第二页 =====
 function renderSummary(){
   const table=document.getElementById("summaryTable");
   table.innerHTML="";
@@ -199,15 +204,24 @@ function renderSummary(){
 
   dates.forEach(date=>{
     const list=data[date];
-    const values=list.map(i=>i.amount);
-    const sum=values.reduce((a,b)=>a+b,0);
+
+    // 四类分别统计
+    let sums={Courses:0,Indulgence:0,Essentials:0,Moves:0};
+
+    list.forEach(i=>{
+      sums[i.type]+=i.amount;
+    });
+
+    const total=Object.values(sums).reduce((a,b)=>a+b,0);
 
     table.innerHTML+=`
     <tr>
       <td>${date}</td>
       <td>
-        ${sum}
-        <div class="amount-sub">=${values.join("+")}</div>
+        ${total}
+        <div class="amount-sub">
+          =${sums.Courses}+${sums.Indulgence}+${sums.Essentials}+${sums.Moves}
+        </div>
       </td>
     </tr>`;
   });
@@ -250,13 +264,11 @@ exportBtn.onclick=()=>{
   a.click();
 };
 
-// 日期变化
-datePicker.onchange=()=>{
-  renderTable();
-};
+// 日期切换
+datePicker.onchange=renderTable;
 
 // 滑动
-let startX=0, page=0;
+let startX=0,page=0;
 document.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
 document.addEventListener("touchend",e=>{
   let dx=startX-e.changedTouches[0].clientX;
@@ -268,6 +280,7 @@ document.addEventListener("touchend",e=>{
 // 初始化
 renderTable();
 renderSummary();
+
 </script>
 
 </body>
