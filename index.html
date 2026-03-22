@@ -1,53 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>$ Recorder</title>
-  <link rel="icon1.png" href="icon1.png">
+<meta charset="UTF-8">
+<title>$ Recorder</title>
+<link rel="icon1.png" href="icon1.png">
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+header {
+  text-align: center;
+  padding: 10px;
+}
+
+header h1 {
+  margin: 0;
+  font-weight: bold;
+  color: black;
+}
+
+header span {
+  color: gray;
+  font-size: 14px;
+}
+
+.container {
+  display: flex;
+  width: 200%;
+  height: calc(100vh - 60px);
+  transition: transform 0.4s ease;
+}
+
+.page {
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn {
+  padding: 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  color: white;
+}
+
+.pink { background: #ff7eb3; }
+.orange { background: #ff9a3c; }
+.blue { background: #4da6ff; }
+.green { background: #4cd964; }
+
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+}
+
+td, th {
+  border-bottom: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+#exportBtn {
+  display: block;
+  margin: 100px auto;
+  padding: 15px 30px;
+  font-size: 18px;
+}
+
+pre {
+  white-space: pre-wrap;
+  padding: 10px;
+}
+</style>
 </head>
+
 <body>
 
-  <!-- Header -->
-  <header>
-    <h1>$ Recorder</h1>
-    <span id="time"></span>
-  </header>
+<header>
+  <h1>$ Recorder</h1>
+  <span id="time"></span>
+</header>
 
-  <!-- Slider Container -->
-  <div class="container" id="container">
+<div class="container" id="container">
 
-    <!-- Page 1 -->
-    <div class="page" id="page1">
-      <div class="buttons">
-        <button class="btn pink" data-type="Courses">Courses</button>
-        <button class="btn orange" data-type="Indulgence">Indulgence</button>
-        <button class="btn blue" data-type="Essentials">Essentials</button>
-        <button class="btn green" data-type="Moves">Moves</button>
-      </div>
-
-      <div class="date-picker">
-        <input type="date" id="datePicker" />
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody id="recordTable"></tbody>
-      </table>
+  <!-- Page 1 -->
+  <div class="page">
+    <div class="buttons">
+      <button class="btn pink" data-type="Courses">Courses</button>
+      <button class="btn orange" data-type="Indulgence">Indulgence</button>
+      <button class="btn blue" data-type="Essentials">Essentials</button>
+      <button class="btn green" data-type="Moves">Moves</button>
     </div>
 
-    <!-- Page 2 -->
-    <div class="page" id="page2">
-      <button id="exportBtn">Export JSON</button>
-      <pre id="output"></pre>
+    <div style="margin-top:15px;">
+      <input type="date" id="datePicker">
     </div>
 
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody id="recordTable"></tbody>
+    </table>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Page 2 -->
+  <div class="page">
+    <button id="exportBtn">Export JSON</button>
+    <pre id="output"></pre>
+  </div>
+
+</div>
+
+<script>
+// ===== 时间 =====
+function updateTime() {
+  document.getElementById("time").innerText =
+    new Date().toLocaleString();
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+// ===== 数据 =====
+let data = JSON.parse(localStorage.getItem("records")) || {};
+
+// ===== 日期 =====
+const datePicker = document.getElementById("datePicker");
+const today = new Date().toISOString().split("T")[0];
+datePicker.value = today;
+
+// ===== 渲染 =====
+function renderTable() {
+  const table = document.getElementById("recordTable");
+  table.innerHTML = "";
+
+  const records = data[datePicker.value] || [];
+
+  records.forEach(item => {
+    table.innerHTML += `
+      <tr>
+        <td>${item.type}</td>
+        <td>${item.amount}</td>
+      </tr>
+    `;
+  });
+}
+
+// ===== 输入 =====
+document.querySelectorAll(".btn").forEach(btn => {
+  btn.onclick = () => {
+    const type = btn.dataset.type;
+    const input = prompt(`Enter amount for ${type}:`);
+
+    if (!/^\d+$/.test(input)) {
+      alert("❌ Only numbers allowed!");
+      return;
+    }
+
+    const date = datePicker.value;
+
+    if (!data[date]) data[date] = [];
+
+    data[date].push({
+      type,
+      amount: Number(input)
+    });
+
+    localStorage.setItem("records", JSON.stringify(data));
+    renderTable();
+  };
+});
+
+// ===== 日期切换 =====
+datePicker.onchange = renderTable;
+
+// ===== 导出 =====
+document.getElementById("exportBtn").onclick = () => {
+  document.getElementById("output").textContent =
+    JSON.stringify(data, null, 2);
+};
+
+// ===== 滑动 =====
+let startX = 0;
+let currentPage = 0;
+const container = document.getElementById("container");
+
+document.addEventListener("touchstart", e => {
+  startX = e.touches[0].clientX;
+});
+
+document.addEventListener("touchend", e => {
+  let diff = startX - e.changedTouches[0].clientX;
+
+  if (diff > 50) currentPage = 1;
+  if (diff < -50) currentPage = 0;
+
+  container.style.transform =
+    `translateX(-${currentPage * 50}%)`;
+});
+
+// 初始化
+renderTable();
+</script>
+
 </body>
 </html>
