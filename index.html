@@ -18,18 +18,18 @@ body {
 /* Header */
 header {
   text-align: center;
-  padding: 16px;
+  padding: 14px;
   background: white;
 }
 
 header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: bold;
 }
 
 header span {
-  font-size: 18px;
+  font-size: 16px;
   color: gray;
 }
 
@@ -37,14 +37,14 @@ header span {
 .container {
   display: flex;
   width: 200vw;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 70px);
   transition: transform 0.35s ease;
 }
 
 /* Page */
 .page {
   width: 100vw;
-  padding: 20px;
+  padding: 18px;
   overflow-y: auto;
 }
 
@@ -52,14 +52,15 @@ header span {
 .buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 12px;
 }
 
 .btn {
-  padding: 28px;
+  padding: 18px;              /* ↓ 高度缩小 */
   border: none;
-  border-radius: 18px;
-  font-size: 20px;
+  border-radius: 14px;
+  font-size: 16px;            /* ↓ 字体略小 */
+  font-weight: bold;          /* ✅ 加粗 */
   color: white;
 }
 
@@ -68,48 +69,57 @@ header span {
 .blue { background: #4da6ff; }
 .green { background: #4cd964; }
 
-/* Date area */
+/* Date */
 .date-box {
-  margin-top: 20px;
+  margin-top: 18px;
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 15px;
+  gap: 10px;
 }
 
 input[type="date"] {
-  padding: 12px;
-  font-size: 18px;
+  padding: 10px;
+  font-size: 16px;
 }
 
 .week-display {
-  font-size: 18px;
+  font-size: 16px;
   color: #555;
 }
 
 /* Table */
 table {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 15px;
   background: white;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
-  font-size: 18px;
 }
 
 td, th {
-  padding: 16px;
+  padding: 10px;   /* ↓ 更紧凑 */
   border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+.amount-main {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.amount-sub {
+  font-size: 12px;
+  color: gray;
 }
 
 /* Export */
 #exportBtn {
   width: 80%;
-  margin: 120px auto 20px;
+  margin: 120px auto;
   display: block;
-  padding: 18px;
-  font-size: 20px;
-  border-radius: 14px;
+  padding: 16px;
+  font-size: 18px;
+  border-radius: 12px;
 }
 </style>
 </head>
@@ -170,10 +180,9 @@ let data = JSON.parse(localStorage.getItem("records")) || {};
 // ===== 日期 =====
 const datePicker = document.getElementById("datePicker");
 const weekDisplay = document.getElementById("weekDisplay");
-
 datePicker.value = new Date().toISOString().split("T")[0];
 
-// ===== 周计算 =====
+// ===== 周 =====
 function updateWeek() {
   const date = new Date(datePicker.value);
   const day = date.getDay();
@@ -188,52 +197,61 @@ function updateWeek() {
     `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
 }
 
-// ===== 渲染 =====
+// ===== 表格渲染（合并+计算）=====
 function renderTable() {
   const table = document.getElementById("recordTable");
   table.innerHTML = "";
 
-  const records = data[datePicker.value] || [];
+  const records = data[datePicker.value] || {};
 
-  records.forEach(item => {
+  Object.keys(records).forEach(type => {
+    const values = records[type];
+    const sum = values.reduce((a, b) => a + b, 0);
+
+    const formula = values.join("+");
+
     table.innerHTML += `
       <tr>
-        <td>${item.type}</td>
-        <td>${item.amount}</td>
+        <td>${type}</td>
+        <td>
+          <div class="amount-main">${sum}</div>
+          <div class="amount-sub">=${formula}</div>
+        </td>
       </tr>
     `;
   });
 }
 
-// ===== 输入（支持负数）=====
+// ===== 输入 =====
 document.querySelectorAll(".btn").forEach(btn => {
   btn.onclick = () => {
     const type = btn.dataset.type;
     const input = prompt(`Enter amount for ${type}:`);
 
     if (!/^-?\d+$/.test(input)) {
-      alert("❌ Only integers allowed (can be negative)");
+      alert("❌ Only integers allowed");
       return;
     }
 
     const date = datePicker.value;
 
-    if (!data[date]) data[date] = [];
+    if (!data[date]) data[date] = {};
+    if (!data[date][type]) data[date][type] = [];
 
-    data[date].push({ type, amount: Number(input) });
+    data[date][type].push(Number(input));
 
     localStorage.setItem("records", JSON.stringify(data));
     renderTable();
   };
 });
 
-// ===== 日期切换 =====
+// ===== 日期 =====
 datePicker.onchange = () => {
   renderTable();
   updateWeek();
 };
 
-// ===== 导出文件 =====
+// ===== 导出 =====
 document.getElementById("exportBtn").onclick = () => {
   const blob = new Blob(
     [JSON.stringify(data, null, 2)],
@@ -246,48 +264,43 @@ document.getElementById("exportBtn").onclick = () => {
   a.click();
 };
 
-// ===== 滑动 =====
+// ===== 滑动优化（防误触）=====
 let startX = 0;
-let currentX = 0;
-let isDragging = false;
+let startY = 0;
 let currentPage = 0;
+let isDragging = false;
 
 const container = document.getElementById("container");
 
 function start(e) {
   isDragging = true;
   startX = e.touches ? e.touches[0].clientX : e.clientX;
+  startY = e.touches ? e.touches[0].clientY : e.clientY;
 }
 
-function move(e) {
-  if (!isDragging) return;
-  currentX = e.touches ? e.touches[0].clientX : e.clientX;
-  let diff = currentX - startX;
-
-  container.style.transition = "none";
-  container.style.transform =
-    `translateX(calc(${-currentPage * 100}vw + ${diff}px))`;
-}
-
-function end() {
+function end(e) {
   if (!isDragging) return;
   isDragging = false;
 
-  let diff = currentX - startX;
+  const endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+  const endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
 
-  if (diff < -50) currentPage = 1;
-  if (diff > 50) currentPage = 0;
+  const dx = endX - startX;
+  const dy = endY - startY;
 
-  container.style.transition = "0.35s";
+  // 👉 关键：必须横向明显大于纵向 + 距离够大
+  if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy)) {
+    if (dx < 0) currentPage = 1;
+    if (dx > 0) currentPage = 0;
+  }
+
   container.style.transform = `translateX(-${currentPage * 100}vw)`;
 }
 
 document.addEventListener("touchstart", start);
-document.addEventListener("touchmove", move);
 document.addEventListener("touchend", end);
 
 document.addEventListener("mousedown", start);
-document.addEventListener("mousemove", move);
 document.addEventListener("mouseup", end);
 
 // 初始化
