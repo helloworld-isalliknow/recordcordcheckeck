@@ -18,18 +18,18 @@ body {
 /* Header */
 header {
   text-align: center;
-  padding: 14px;
+  padding: 12px;
   background: white;
 }
 
 header h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: bold;
 }
 
 header span {
-  font-size: 16px;
+  font-size: 14px;
   color: gray;
 }
 
@@ -37,13 +37,13 @@ header span {
 .container {
   display: flex;
   width: 200vw;
-  height: calc(100vh - 70px);
+  height: calc(100vh - 65px);
   transition: transform 0.3s ease;
 }
 
 .page {
   width: 100vw;
-  padding: 18px;
+  padding: 16px;
   overflow-y: auto;
 }
 
@@ -51,14 +51,14 @@ header span {
 .buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .btn {
-  padding: 16px;
+  padding: 12px;            /* ✅ 再缩小 */
   border: none;
-  border-radius: 14px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: bold;
   color: white;
 }
@@ -70,46 +70,51 @@ header span {
 
 /* Date */
 .date-box {
-  margin-top: 16px;
+  margin-top: 14px;
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 input[type="date"] {
-  padding: 8px;
-  font-size: 14px;
+  padding: 6px;
+  font-size: 13px;
 }
 
 .week-display {
-  font-size: 14px;
+  font-size: 13px;
   color: #555;
 }
 
 /* Table */
 table {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 10px;
   background: white;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 td, th {
-  padding: 8px;
+  padding: 6px;   /* 更紧凑 */
   border-bottom: 1px solid #eee;
   text-align: center;
 }
 
 .amount-main {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
 }
 
 .amount-sub {
-  font-size: 11px;
+  font-size: 10px;
   color: gray;
+}
+
+.total-row {
+  background: #fafafa;
+  font-weight: bold;
 }
 
 /* Export */
@@ -117,8 +122,8 @@ td, th {
   width: 80%;
   margin: 120px auto;
   display: block;
-  padding: 14px;
-  font-size: 16px;
+  padding: 12px;
+  font-size: 15px;
   border-radius: 10px;
 }
 </style>
@@ -182,14 +187,17 @@ const datePicker = document.getElementById("datePicker");
 const weekDisplay = document.getElementById("weekDisplay");
 const table = document.getElementById("recordTable");
 
-// ===== 初始化日期 =====
+// ===== 标准日期函数（关键修复）=====
+function getDateKey(dateObj) {
+  return dateObj.toISOString().split("T")[0];
+}
+
+// 初始化日期
 const today = new Date();
-datePicker.value = today.toISOString().split("T")[0];
+datePicker.value = getDateKey(today);
 
 // ===== 周计算 =====
 function updateWeek() {
-  if (!datePicker.value) return;
-
   const date = new Date(datePicker.value);
   let day = date.getDay();
   if (day === 0) day = 7;
@@ -204,17 +212,19 @@ function updateWeek() {
     `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
 }
 
-// ===== 渲染 =====
+// ===== 渲染表格 =====
 function renderTable() {
   table.innerHTML = "";
 
-  const records = data[datePicker.value] || {};
+  const dateKey = datePicker.value;
+  const records = data[dateKey] || {};
 
-  for (let type in records) {
+  let total = 0;
+
+  Object.keys(records).forEach(type => {
     const values = records[type];
     const sum = values.reduce((a, b) => a + b, 0);
-
-    const formula = values.join("+");
+    total += sum;
 
     const row = document.createElement("tr");
 
@@ -222,45 +232,54 @@ function renderTable() {
       <td>${type}</td>
       <td>
         <div class="amount-main">${sum}</div>
-        <div class="amount-sub">=${formula}</div>
+        <div class="amount-sub">=${values.join("+")}</div>
       </td>
     `;
 
     table.appendChild(row);
-  }
+  });
+
+  // ✅ 总计行
+  const totalRow = document.createElement("tr");
+  totalRow.className = "total-row";
+  totalRow.innerHTML = `
+    <td>TOTAL</td>
+    <td>${total}</td>
+  `;
+  table.appendChild(totalRow);
 }
 
 // ===== 输入 =====
 document.querySelectorAll(".btn").forEach(btn => {
-  btn.addEventListener("click", () => {
+  btn.onclick = () => {
     const type = btn.dataset.type;
     const input = prompt(`Enter amount for ${type}:`);
 
-    if (input === null) return; // ✅ 关键修复
+    if (input === null) return;
 
     if (!/^-?\d+$/.test(input)) {
       alert("❌ Only integers allowed");
       return;
     }
 
-    const date = datePicker.value;
+    const dateKey = datePicker.value;
 
-    if (!data[date]) data[date] = {};
-    if (!data[date][type]) data[date][type] = [];
+    if (!data[dateKey]) data[dateKey] = {};
+    if (!data[dateKey][type]) data[dateKey][type] = [];
 
-    data[date][type].push(Number(input));
+    data[dateKey][type].push(Number(input));
 
     localStorage.setItem("records", JSON.stringify(data));
 
     renderTable();
-  });
+  };
 });
 
 // ===== 日期切换 =====
-datePicker.addEventListener("change", () => {
+datePicker.onchange = () => {
   updateWeek();
   renderTable();
-});
+};
 
 // ===== 导出 =====
 document.getElementById("exportBtn").onclick = () => {
@@ -275,7 +294,7 @@ document.getElementById("exportBtn").onclick = () => {
   a.click();
 };
 
-// ===== 滑动（不影响点击）=====
+// ===== 滑动 =====
 let startX = 0;
 let startY = 0;
 let currentPage = 0;
@@ -297,7 +316,7 @@ document.addEventListener("touchend", e => {
   }
 });
 
-// ===== 初始化 =====
+// 初始化
 updateWeek();
 renderTable();
 </script>
