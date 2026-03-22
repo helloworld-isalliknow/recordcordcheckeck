@@ -31,7 +31,8 @@ header span { color:gray; font-size:14px; }
   padding:10px;
   box-sizing:border-box;
   display:flex;
-  flex-direction:column;
+  flex-direction: column;
+  justify-content: space-between; /* 新增：上下分布，按钮不会被挤出屏幕 */
 }
 #datePicker {
   margin:5px auto;
@@ -40,7 +41,7 @@ header span { color:gray; font-size:14px; }
 }
 .table-wrap {
   flex:1;
-  overflow:hidden;
+  overflow:auto; /* 修改：第二页滚动可见 */
 }
 table {
   width:100%;
@@ -97,6 +98,7 @@ td,th {
 
 <div class="container" id="container">
 
+<!-- Page1 -->
 <div class="page">
 <input type="date" id="datePicker">
 <div class="table-wrap">
@@ -107,6 +109,8 @@ td,th {
 <tbody id="recordTable"></tbody>
 </table>
 </div>
+
+<!-- 移动按钮到页面底部 -->
 <div class="buttons">
 <button class="btn pink" data-type="Courses">Courses</button>
 <button class="btn orange" data-type="Indulgence">Indulgence</button>
@@ -117,6 +121,7 @@ td,th {
 </div>
 </div>
 
+<!-- Page2 -->
 <div class="page">
 <div class="table-wrap">
 <table class="big-table">
@@ -131,10 +136,10 @@ td,th {
 </div>
 
 <script>
-// 时间
+// 时间显示
 setInterval(()=>time.innerText=new Date().toLocaleString(),1000);
 
-// 数据
+// 数据初始化
 let data=JSON.parse(localStorage.getItem("records"))||{};
 const types=["Courses","Indulgence","Essentials","Moves"];
 const BASE_DAY=100;
@@ -143,6 +148,7 @@ const BASE_MONTH=700;
 const datePicker=document.getElementById("datePicker");
 datePicker.value=new Date().toISOString().split("T")[0];
 
+// ===== Page1 表格渲染 =====
 function renderTable(){
   const key=datePicker.value;
   const dayList=data[key]||[];
@@ -178,6 +184,7 @@ function renderTable(){
   </tr>`;
 }
 
+// ===== Page2 大表渲染（修复 overflow & tbody 显示） =====
 function renderSummary(){
   const table=document.getElementById("summaryTable");
   table.innerHTML="";
@@ -201,6 +208,7 @@ function renderSummary(){
   });
 }
 
+// ===== 按钮输入逻辑 =====
 document.querySelectorAll(".btn").forEach(btn=>{
   btn.onclick=()=>{
     if(btn.id==="deleteBtn"||btn.id==="exportBtn") return;
@@ -232,6 +240,7 @@ exportBtn.onclick=()=>{
 
 datePicker.onchange=renderTable;
 
+// 页面滑动
 let startX=0,page=0;
 document.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
 document.addEventListener("touchend",e=>{
@@ -245,8 +254,6 @@ renderTable();
 renderSummary();
 
 // ==================== PWA 集成 ====================
-
-// 1. 内联 manifest（src 使用 icon1.png）
 const manifest = {
   name: "$ Recorder",
   short_name: "Recorder",
@@ -265,7 +272,7 @@ link.rel = 'manifest';
 link.href = manifestURL;
 document.head.appendChild(link);
 
-// 2. 内联 Service Worker 注册
+// 内联 Service Worker
 if ('serviceWorker' in navigator) {
   const swCode = `
   const CACHE_NAME="recorder-v1";
