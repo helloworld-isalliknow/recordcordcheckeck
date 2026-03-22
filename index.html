@@ -38,7 +38,7 @@ header span {
   display: flex;
   width: 200vw;
   height: calc(100vh - 70px);
-  transition: transform 0.35s ease;
+  transition: transform 0.3s ease;
 }
 
 .page {
@@ -177,14 +177,19 @@ updateTime();
 // ===== 数据 =====
 let data = JSON.parse(localStorage.getItem("records")) || {};
 
-// ===== 日期 =====
+// ===== DOM =====
 const datePicker = document.getElementById("datePicker");
 const weekDisplay = document.getElementById("weekDisplay");
+const table = document.getElementById("recordTable");
 
-datePicker.value = new Date().toISOString().split("T")[0];
+// ===== 初始化日期 =====
+const today = new Date();
+datePicker.value = today.toISOString().split("T")[0];
 
-// ===== 周计算（周一开始）=====
+// ===== 周计算 =====
 function updateWeek() {
+  if (!datePicker.value) return;
+
   const date = new Date(datePicker.value);
   let day = date.getDay();
   if (day === 0) day = 7;
@@ -199,35 +204,39 @@ function updateWeek() {
     `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
 }
 
-// ===== 渲染表格 =====
+// ===== 渲染 =====
 function renderTable() {
-  const table = document.getElementById("recordTable");
   table.innerHTML = "";
 
   const records = data[datePicker.value] || {};
 
-  Object.keys(records).forEach(type => {
+  for (let type in records) {
     const values = records[type];
     const sum = values.reduce((a, b) => a + b, 0);
+
     const formula = values.join("+");
 
-    table.innerHTML += `
-      <tr>
-        <td>${type}</td>
-        <td>
-          <div class="amount-main">${sum}</div>
-          <div class="amount-sub">=${formula}</div>
-        </td>
-      </tr>
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${type}</td>
+      <td>
+        <div class="amount-main">${sum}</div>
+        <div class="amount-sub">=${formula}</div>
+      </td>
     `;
-  });
+
+    table.appendChild(row);
+  }
 }
 
 // ===== 输入 =====
 document.querySelectorAll(".btn").forEach(btn => {
-  btn.onclick = () => {
+  btn.addEventListener("click", () => {
     const type = btn.dataset.type;
     const input = prompt(`Enter amount for ${type}:`);
+
+    if (input === null) return; // ✅ 关键修复
 
     if (!/^-?\d+$/.test(input)) {
       alert("❌ Only integers allowed");
@@ -242,15 +251,16 @@ document.querySelectorAll(".btn").forEach(btn => {
     data[date][type].push(Number(input));
 
     localStorage.setItem("records", JSON.stringify(data));
+
     renderTable();
-  };
+  });
 });
 
 // ===== 日期切换 =====
-datePicker.onchange = () => {
-  renderTable();
+datePicker.addEventListener("change", () => {
   updateWeek();
-};
+  renderTable();
+});
 
 // ===== 导出 =====
 document.getElementById("exportBtn").onclick = () => {
@@ -261,66 +271,35 @@ document.getElementById("exportBtn").onclick = () => {
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `records-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `records-${datePicker.value}.json`;
   a.click();
 };
 
-// ===== 滑动优化（防误触 + 拖动反馈）=====
+// ===== 滑动（不影响点击）=====
 let startX = 0;
 let startY = 0;
-let currentX = 0;
-let isDragging = false;
 let currentPage = 0;
 
 const container = document.getElementById("container");
 
-function start(e) {
-  isDragging = true;
-  startX = e.touches ? e.touches[0].clientX : e.clientX;
-  startY = e.touches ? e.touches[0].clientY : e.clientY;
-}
+document.addEventListener("touchstart", e => {
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+});
 
-function move(e) {
-  if (!isDragging) return;
-
-  currentX = e.touches ? e.touches[0].clientX : e.clientX;
-  let dx = currentX - startX;
-
-  container.style.transition = "none";
-  container.style.transform =
-    `translateX(calc(${-currentPage * 100}vw + ${dx}px))`;
-}
-
-function end(e) {
-  if (!isDragging) return;
-  isDragging = false;
-
-  const endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-  const endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-
-  const dx = endX - startX;
-  const dy = endY - startY;
+document.addEventListener("touchend", e => {
+  const dx = e.changedTouches[0].clientX - startX;
+  const dy = e.changedTouches[0].clientY - startY;
 
   if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy)) {
-    if (dx < 0) currentPage = 1;
-    if (dx > 0) currentPage = 0;
+    currentPage = dx < 0 ? 1 : 0;
+    container.style.transform = `translateX(-${currentPage * 100}vw)`;
   }
+});
 
-  container.style.transition = "0.35s";
-  container.style.transform = `translateX(-${currentPage * 100}vw)`;
-}
-
-document.addEventListener("touchstart", start);
-document.addEventListener("touchmove", move);
-document.addEventListener("touchend", end);
-
-document.addEventListener("mousedown", start);
-document.addEventListener("mousemove", move);
-document.addEventListener("mouseup", end);
-
-// 初始化
-renderTable();
+// ===== 初始化 =====
 updateWeek();
+renderTable();
 </script>
 
 </body>
