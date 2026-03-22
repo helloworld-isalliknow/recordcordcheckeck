@@ -16,23 +16,32 @@ header span { font-size:12px; color:gray; }
 
 /* Layout */
 .container { display:flex; width:200vw; height:calc(100vh - 60px); transition:.3s; }
-.page { width:100vw; padding:14px; overflow:auto; padding-bottom:80px; }
+.page { width:100vw; padding:14px; overflow:auto; padding-bottom:120px; }
 
-/* 按钮（移动到底部 + 放大字体） */
+/* 日期选择框 + 当前周 */
+.date-box { display:flex; justify-content:center; align-items:center; margin-top:10px; gap:12px; }
+.date-btn {
+  padding:8px 12px;
+  background:white;
+  border-radius:8px;
+  font-size:14px; 
+}
+.week-display {
+  font-size:14px;
+  color:gray;
+}
+
+/* 按钮（放在页面下方，但不需要滚动） */
 .buttons {
-  position:fixed;
-  bottom:10px;
-  left:0;
-  width:100%;
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:8px;
-  padding:0 10px;
+  margin-top:20px;
 }
 
 .btn {
   padding:10px;
-  font-size:14px;  /* ✅ 放大 */
+  font-size:14px;
   font-weight:bold;
   border:none;
   border-radius:8px;
@@ -43,15 +52,6 @@ header span { font-size:12px; color:gray; }
 .orange{background:#ff9a3c;}
 .blue{background:#4da6ff;}
 .green{background:#4cd964;}
-
-/* Date（字体放大） */
-.date-box { display:flex; justify-content:center; margin-top:10px; }
-.date-btn {
-  padding:8px 12px;
-  background:white;
-  border-radius:8px;
-  font-size:14px; /* ✅ 放大 */
-}
 
 /* Calendar */
 .calendar {
@@ -86,48 +86,26 @@ header span { font-size:12px; color:gray; }
   right:6px;
 }
 
-/* Table（列宽调整） */
+/* 表格 */
 table {
   width:100%;
   margin-top:10px;
   background:white;
   border-radius:8px;
-  table-layout:fixed; /* ✅ 关键 */
+  table-layout:fixed;
 }
 
-th:nth-child(1), td:nth-child(1) {
-  width:35%; /* ✅ Type 更窄 */
-}
+th:nth-child(1), td:nth-child(1) { width:35%; }
+th:nth-child(2), td:nth-child(2) { width:65%; }
 
-th:nth-child(2), td:nth-child(2) {
-  width:65%; /* ✅ Amount 更宽 */
-}
-
-td,th {
-  padding:5px;
-  text-align:center;
-  font-size:12px;
-}
-
+td,th { padding:5px; text-align:center; font-size:12px; }
 .amount-sub { font-size:11px; color:gray; }
-
-.total-row {
-  background:#fafafa;
-  font-weight:bold;
-}
-
-.residual {
-  font-size:11px;
-  color:gray;
-}
+.total-row { background:#fafafa; font-weight:bold; }
+.residual { font-size:11px; color:gray; }
 
 /* Export */
-#exportBtn {
-  width:80%;
-  margin:100px auto;
-  display:block;
-  padding:10px;
-}
+#exportBtn { width:80%; margin:100px auto; display:block; padding:10px; }
+
 </style>
 </head>
 
@@ -144,6 +122,7 @@ td,th {
   
   <div class="date-box">
     <div class="date-btn" id="dateBtn"></div>
+    <div class="week-display" id="weekDisplay"></div>
   </div>
 
   <table>
@@ -153,7 +132,6 @@ td,th {
     <tbody id="recordTable"></tbody>
   </table>
 
-  <!-- 按钮移到底部 -->
   <div class="buttons">
     <button class="btn pink" data-type="Courses">Courses</button>
     <button class="btn orange" data-type="Indulgence">Indulgence</button>
@@ -175,8 +153,8 @@ td,th {
 </div>
 
 <script>
-// ===== 常量（可改）=====
-const BASE_VALUE = 100;  // ✅ Residuals 基准值
+// ===== 常量 =====
+const BASE_VALUE = 100;
 
 // 时间
 setInterval(()=>time.innerText=new Date().toLocaleString(),1000);
@@ -186,11 +164,18 @@ let data = JSON.parse(localStorage.getItem("records")) || {};
 let currentDate = new Date();
 
 // 工具
-function formatDate(d){
-  return d.toISOString().split("T")[0];
+function formatDate(d){ return d.toISOString().split("T")[0]; }
+
+// ===== 更新周显示 =====
+function updateWeek(){
+  const d = new Date(currentDate);
+  let day = d.getDay(); if(day===0) day=7;
+  const start = new Date(d); start.setDate(d.getDate()-day+1);
+  const end = new Date(start); end.setDate(start.getDate()+6);
+  weekDisplay.innerText = `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
 }
 
-// ===== 表格 =====
+// ===== 表格渲染 =====
 function renderTable(){
   const table = document.getElementById("recordTable");
   table.innerHTML = "";
@@ -216,15 +201,14 @@ function renderTable(){
     `;
   });
 
-  // TOTAL + Residual
+  // TOTAL + Residuals（只显示结果）
   const residual = BASE_VALUE - total;
-
   table.innerHTML += `
     <tr class="total-row">
       <td>TOTAL</td>
       <td>
         ${total}
-        <div class="residual">Residuals=${BASE_VALUE}-${total}=${residual}</div>
+        <div class="residual">Residuals=${residual}</div>
       </td>
     </tr>
   `;
@@ -251,7 +235,7 @@ document.querySelectorAll(".btn").forEach(btn=>{
 const dateBtn = document.getElementById("dateBtn");
 dateBtn.onclick=()=>calendar.style.display="block";
 
-// 日历
+// 日历渲染
 function renderCalendar(){
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML="";
@@ -278,6 +262,7 @@ function renderCalendar(){
         dateBtn.innerText=formatDate(currentDate);
         calendar.style.display="none";
         renderTable();
+        updateWeek();
       }
     })();
 
@@ -307,6 +292,7 @@ document.addEventListener("touchend",e=>{
 
 // 初始化
 dateBtn.innerText=formatDate(currentDate);
+updateWeek();
 renderTable();
 renderCalendar();
 </script>
