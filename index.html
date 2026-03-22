@@ -5,220 +5,240 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>$ Recorder</title>
 <style>
-* { box-sizing: border-box; }
-body { margin:0; font-family:-apple-system; background:#f5f5f5; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
 
-/* Header */
-header { text-align:center; padding:10px; background:white; }
-header h1 { margin:0; font-size:22px; }
-header span { font-size:12px; color:gray; }
+header {
+  text-align: center;
+  padding: 10px;
+}
 
-/* Layout */
-.container { display:flex; width:200vw; height:calc(100vh - 60px); transition:.3s; }
-.page { width:100vw; padding:14px; overflow:auto; padding-bottom:140px; }
+header h1 {
+  margin: 0;
+  font-weight: bold;
+  color: black;
+}
 
-/* 日期选择框 */
-.date-box { display:flex; justify-content:center; align-items:center; margin-top:10px; gap:12px; }
-.date-btn { padding:8px 12px; background:white; border-radius:8px; font-size:14px; cursor:pointer; }
+header span {
+  color: gray;
+  font-size: 14px;
+}
 
-/* 按钮 */
-.buttons { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:20px; }
-.btn { padding:10px; font-size:14px; font-weight:bold; border:none; border-radius:8px; color:white; cursor:pointer; }
-.pink{background:#ff7eb3;} .orange{background:#ff9a3c;}
-.blue{background:#4da6ff;} .green{background:#4cd964;}
-.gray-btn{background:#999;} /* Export / Delete */
-.delete-btn{color:white;}
+.container {
+  display: flex;
+  width: 200%;
+  height: calc(100vh - 60px);
+  transition: transform 0.4s ease;
+}
 
-/* Calendar */
-.calendar { position:fixed; bottom:0; left:0; width:100%; background:white; padding:10px; display:none; }
-.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
-.day { text-align:center; padding:8px 0; position:relative; }
-.dot { width:6px; height:6px; background:gold; border-radius:50%; position:absolute; top:2px; right:6px; }
+.page {
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
 
-/* Table */
-table { width:100%; margin-top:10px; background:white; border-radius:8px; table-layout:fixed; }
-th:nth-child(1), td:nth-child(1) { width:25%; }
-th:nth-child(2), td:nth-child(2) { width:45%; }
-th:nth-child(3), td:nth-child(3) { width:25%; }
+/* 2x3 按钮布局 */
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  margin-top: 20px;
+}
 
-td,th { padding:5px; text-align:center; font-size:12px; }
-.amount-sub { font-size:11px; color:gray; }
-.total-row { background:#fafafa; font-weight:bold; }
-.residual { font-size:11px; color:gray; }
+.btn {
+  padding: 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+}
 
+.pink { background: #ff7eb3; }
+.orange { background: #ff9a3c; }
+.blue { background: #4da6ff; }
+.green { background: #4cd964; }
+.gray-btn { background: #999; }
+.delete-btn { color: white; }
+
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+}
+
+td, th {
+  border-bottom: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+#exportBtn {
+  /* 已作为彩色按钮放置，不需要这里 */
+}
+
+pre {
+  white-space: pre-wrap;
+  padding: 10px;
+}
+
+#datePicker {
+  margin-top: 15px;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
 </style>
 </head>
+
 <body>
 
 <header>
-<h1>$ Recorder</h1>
-<span id="time"></span>
+  <h1>$ Recorder</h1>
+  <span id="time"></span>
 </header>
 
 <div class="container" id="container">
 
-<div class="page" id="page1">
-  <div class="date-box">
-    <div class="date-btn" id="dateBtn"></div>
+  <!-- Page 1 -->
+  <div class="page">
+    <!-- 日期选择 -->
+    <input type="date" id="datePicker">
+
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody id="recordTable"></tbody>
+    </table>
+
+    <!-- 六个按钮 2x3 -->
+    <div class="buttons">
+      <button class="btn pink" data-type="Courses">Courses</button>
+      <button class="btn orange" data-type="Indulgence">Indulgence</button>
+      <button class="btn blue" data-type="Essentials">Essentials</button>
+      <button class="btn green" data-type="Moves">Moves</button>
+      <button class="btn gray-btn delete-btn" id="deleteBtn">Delete</button>
+      <button class="btn gray-btn" id="exportBtn">Export</button>
+    </div>
   </div>
 
-  <table>
-    <thead>
-      <tr><th>Type</th><th>Day TOTAL</th><th>Month TOTAL</th></tr>
-    </thead>
-    <tbody id="recordTable"></tbody>
-  </table>
-
-  <div class="buttons">
-    <button class="btn pink" data-type="Courses">Courses</button>
-    <button class="btn orange" data-type="Indulgence">Indulgence</button>
-    <button class="btn blue" data-type="Essentials">Essentials</button>
-    <button class="btn green" data-type="Moves">Moves</button>
-    <button class="btn gray-btn delete-btn" id="deleteBtn">Delete</button>
-    <button class="btn gray-btn" id="exportBtn">Export</button>
+  <!-- Page 2 -->
+  <div class="page">
+    <pre id="output"></pre>
   </div>
-</div>
 
-<div class="page" id="page2"></div>
-
-</div>
-
-<!-- Calendar -->
-<div class="calendar" id="calendar">
-  <div class="calendar-grid" id="calendarGrid"></div>
 </div>
 
 <script>
-// 常量
-const BASE_VALUE=100;
-const MONTH_BASE=700; // 用于Month TOTAL residual
-const types=["Courses","Indulgence","Essentials","Moves"];
+// ===== 时间 =====
+function updateTime() {
+  document.getElementById("time").innerText =
+    new Date().toLocaleString();
+}
+setInterval(updateTime, 1000);
+updateTime();
 
-// 时间
-setInterval(()=>time.innerText=new Date().toLocaleString(),1000);
+// ===== 数据 =====
+let data = JSON.parse(localStorage.getItem("records")) || {};
 
-// 数据
-let data=JSON.parse(localStorage.getItem("records"))||{};
-let currentDate=new Date();
+// ===== 日期 =====
+const datePicker = document.getElementById("datePicker");
+const today = new Date().toISOString().split("T")[0];
+datePicker.value = today;
 
-// 格式化日期
-function formatDate(d){ return d.toISOString().split("T")[0]; }
+// ===== 渲染表格 =====
+function renderTable() {
+  const table = document.getElementById("recordTable");
+  table.innerHTML = "";
 
-// 渲染表格
-function renderTable(){
-  const table=document.getElementById("recordTable");
-  table.innerHTML="";
-  const dayList=data[formatDate(currentDate)]||[];
+  const records = data[datePicker.value] || [];
 
-  // 当前月总和
-  const monthKey=currentDate.getMonth();
-  let monthTotals={}; types.forEach(t=>monthTotals[t]=0);
-  for(let key in data){
-    let d=new Date(key);
-    if(d.getMonth()===monthKey){
-      data[key].forEach(entry=>{ monthTotals[entry.type]+=entry.amount; });
-    }
-  }
-  const monthSum=Object.values(monthTotals).reduce((a,b)=>a+b,0);
-
-  let dayTotal=0;
-  types.forEach(type=>{
-    const values=dayList.filter(i=>i.type===type).map(i=>i.amount);
-    const sum=values.reduce((a,b)=>a+b,0);
-    dayTotal+=sum;
-    const monthSumType=monthTotals[type];
-    const percent=monthSum?Math.round(monthSumType/monthSum*100):0;
-    table.innerHTML+=`<tr>
-      <td>${type}</td>
-      <td>${sum}<div class="amount-sub">${values.length? "="+values.join("+"):""}</div></td>
-      <td>${monthSumType}<div class="amount-sub">${percent}%</div></td>
-    </tr>`;
+  records.forEach(item => {
+    table.innerHTML += `
+      <tr>
+        <td>${item.type}</td>
+        <td>${item.amount}</td>
+      </tr>
+    `;
   });
-
-  const residualDay=BASE_VALUE-dayTotal;
-  const residualMonth=MONTH_BASE-monthSum;
-  table.innerHTML+=`<tr class="total-row">
-    <td>Day TOTAL</td>
-    <td>${dayTotal}<div class="residual">Residuals=${residualDay}</div></td>
-    <td>${monthSum}<div class="residual">residual=${MONTH_BASE}-${monthSum}=${residualMonth}</div></td>
-  </tr>`;
 }
 
-// 输入
-document.querySelectorAll(".btn").forEach(btn=>{
-  btn.onclick=()=>{
-    if(btn.id==="deleteBtn"||btn.id==="exportBtn") return;
-    let v=prompt("Enter amount:");
-    if(!/^-?\d+$/.test(v)) return;
-    const key=formatDate(currentDate);
-    if(!data[key]) data[key]=[];
-    data[key].push({type:btn.dataset.type,amount:Number(v)});
-    localStorage.setItem("records",JSON.stringify(data));
-    renderTable(); renderCalendar();
-  }
+// ===== 输入按钮 =====
+document.querySelectorAll(".btn").forEach(btn => {
+  btn.onclick = () => {
+    if(btn.id === "deleteBtn" || btn.id === "exportBtn") return;
+
+    const type = btn.dataset.type;
+    const input = prompt(`Enter amount for ${type}:`);
+
+    if (!/^-?\d+$/.test(input)) {
+      alert("❌ Only numbers allowed!");
+      return;
+    }
+
+    const date = datePicker.value;
+
+    if (!data[date]) data[date] = [];
+
+    data[date].push({
+      type,
+      amount: Number(input)
+    });
+
+    localStorage.setItem("records", JSON.stringify(data));
+    renderTable();
+  };
 });
 
-// Delete
-document.getElementById("deleteBtn").onclick=()=>{
-  const key=formatDate(currentDate);
-  if(data[key]) delete data[key];
-  localStorage.setItem("records",JSON.stringify(data));
-  renderTable(); renderCalendar();
+// ===== Delete =====
+document.getElementById("deleteBtn").onclick = () => {
+  const date = datePicker.value;
+  if(data[date]) delete data[date];
+  localStorage.setItem("records", JSON.stringify(data));
+  renderTable();
 };
 
-// Export
-document.getElementById("exportBtn").onclick=()=>{
-  let blob=new Blob([JSON.stringify(data,null,2)]);
-  let a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="records.json";
+// ===== Export =====
+document.getElementById("exportBtn").onclick = () => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "records.json";
   a.click();
 };
 
-// 日期按钮
-const dateBtn=document.getElementById("dateBtn");
-dateBtn.onclick=()=>calendar.style.display="block";
+// ===== 日期变化 =====
+datePicker.onchange = renderTable;
 
-// Calendar渲染
-function renderCalendar(){
-  const grid=document.getElementById("calendarGrid");
-  grid.innerHTML="";
-  let d=new Date(currentDate.getFullYear(),currentDate.getMonth(),1);
-  let m=d.getMonth();
-  while(d.getMonth()===m){
-    let day=document.createElement("div");
-    day.className="day";
-    day.innerText=d.getDate();
-    let key=formatDate(d);
-    if(data[key] && data[key].length){ let dot=document.createElement("div"); dot.className="dot"; day.appendChild(dot);}
-    day.onclick=(()=>{
-      let selected=new Date(d);
-      return ()=>{
-        currentDate=selected;
-        dateBtn.innerText=formatDate(currentDate);
-        calendar.style.display="none";
-        renderTable();
-      }
-    })();
-    grid.appendChild(day);
-    d.setDate(d.getDate()+1);
-  }
-}
+// ===== 滑动切换 =====
+let startX = 0;
+let currentPage = 0;
+const container = document.getElementById("container");
 
-// 页面滑动恢复原始
-let startX=0;
-document.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
-document.addEventListener("touchend",e=>{
-  let dx=e.changedTouches[0].clientX-startX;
-  if(Math.abs(dx)>80){
-    container.style.transform=dx<0?"translateX(-100vw)":"translateX(0)";
-  }
+document.addEventListener("touchstart", e => {
+  startX = e.touches[0].clientX;
+});
+
+document.addEventListener("touchend", e => {
+  let diff = startX - e.changedTouches[0].clientX;
+  if (diff > 50) currentPage = 1;
+  if (diff < -50) currentPage = 0;
+  container.style.transform = `translateX(-${currentPage * 100}%)`;
 });
 
 // 初始化
-dateBtn.innerText=formatDate(currentDate);
 renderTable();
-renderCalendar();
 </script>
+
 </body>
 </html>
