@@ -6,31 +6,50 @@
 <title>$ Recorder</title>
 
 <style>
-body { margin:0; font-family:Arial; background:#f5f5f5; overflow:hidden; }
+body {
+  margin:0;
+  font-family:Arial;
+  background:#f5f5f5;
+  overflow:hidden;
+}
 
-header { text-align:center; padding:10px; }
-header h1 { margin:0; font-weight:bold; }
+/* Header 固定 */
+header {
+  height:60px;
+  text-align:center;
+  padding:5px;
+}
+header h1 { margin:0; }
 header span { color:gray; font-size:14px; }
 
-/* 页面 */
-.container { display:flex; width:200%; height:100vh; transition:0.3s; }
+/* 页面结构 */
+.container {
+  display:flex;
+  width:200%;
+  height:calc(100vh - 60px);
+  transition:0.3s;
+}
+
 .page {
   width:100%;
-  height:100vh;
-  padding:12px;
+  height:100%;
+  padding:10px;
   box-sizing:border-box;
   display:flex;
   flex-direction:column;
-  justify-content:space-between;
 }
 
 /* 日期 */
 #datePicker {
-  display:block;
-  margin:0 auto 8px;
-  padding:6px 10px;
-  font-size:15px;
-  border-radius:8px;
+  margin:5px auto;
+  padding:6px;
+  font-size:14px;
+}
+
+/* 表格容器（关键！防止撑破） */
+.table-wrap {
+  flex:1;
+  overflow:hidden;
 }
 
 /* 表格 */
@@ -42,43 +61,33 @@ table {
 }
 
 td,th {
-  padding:10px;
-  font-size:15px;
+  padding:8px;
+  font-size:14px;
   border-bottom:1px solid #ddd;
 }
 
-.amount-sub {
-  font-size:12px;
-  color:gray;
-}
-
-.residual {
-  font-size:12px;
-  color:gray;
-}
-
-.total-row {
-  font-weight:bold;
-  background:#fafafa;
-}
+.amount-sub { font-size:11px; color:gray; }
+.residual { font-size:11px; color:gray; }
+.total-row { font-weight:bold; background:#fafafa; }
 
 /* 第二页表 */
 .big-table th:nth-child(1), .big-table td:nth-child(1){ width:30%; }
 .big-table th:nth-child(2), .big-table td:nth-child(2){ width:70%; }
 
-/* 按钮 2x3 */
+/* 按钮 */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
-  grid-template-rows:repeat(3, auto);
+  grid-template-rows:repeat(3,auto);
   gap:8px;
+  margin-top:8px;
 }
 
 .btn {
   padding:10px;
   border:none;
   border-radius:10px;
-  font-size:15px;
+  font-size:14px;
   font-weight:bold;
   color:white;
 }
@@ -89,7 +98,7 @@ td,th {
 .blue{background:#4da6ff;}
 .green{background:#4cd964;}
 .delete-btn{background:#999;}
-.gray-btn{background:#ccc; color:white;}
+.gray-btn{background:#ccc;color:white;}
 
 </style>
 </head>
@@ -105,9 +114,10 @@ td,th {
 
 <!-- Page1 -->
 <div class="page">
-<div>
+
 <input type="date" id="datePicker">
 
+<div class="table-wrap">
 <table>
 <thead>
 <tr><th>Type</th><th>Day TOTAL</th><th>Month TOTAL</th></tr>
@@ -124,16 +134,21 @@ td,th {
 <button class="btn delete-btn" id="deleteBtn">Delete</button>
 <button class="btn gray-btn" id="exportBtn">Export</button>
 </div>
+
 </div>
 
 <!-- Page2 -->
 <div class="page">
+
+<div class="table-wrap">
 <table class="big-table">
 <thead>
 <tr><th>Date</th><th>Day Total</th></tr>
 </thead>
 <tbody id="summaryTable"></tbody>
 </table>
+</div>
+
 </div>
 
 </div>
@@ -151,7 +166,7 @@ const BASE_MONTH=700;
 const datePicker=document.getElementById("datePicker");
 datePicker.value=new Date().toISOString().split("T")[0];
 
-// ===== 渲染第一页 =====
+// ===== Page1 =====
 function renderTable(){
   const key=datePicker.value;
   const dayList=data[key]||[];
@@ -159,7 +174,7 @@ function renderTable(){
   table.innerHTML="";
 
   const month=new Date(key).getMonth();
-  let monthTotals={}; types.forEach(t=>monthTotals[t]=0);
+  let monthTotals={Courses:0,Indulgence:0,Essentials:0,Moves:0};
 
   for(let k in data){
     let d=new Date(k);
@@ -195,20 +210,19 @@ function renderTable(){
   </tr>`;
 }
 
-// ===== 渲染第二页 =====
+// ===== Page2（重点修复） =====
 function renderSummary(){
   const table=document.getElementById("summaryTable");
   table.innerHTML="";
 
-  const dates=Object.keys(data).sort();
+  const dates=Object.keys(data)
+    .filter(d=>data[d] && data[d].length) // 过滤空数据
+    .sort(); // 排序
 
   dates.forEach(date=>{
-    const list=data[date];
-
-    // 四类分别统计
     let sums={Courses:0,Indulgence:0,Essentials:0,Moves:0};
 
-    list.forEach(i=>{
+    data[date].forEach(i=>{
       sums[i.type]+=i.amount;
     });
 
@@ -220,7 +234,7 @@ function renderSummary(){
       <td>
         ${total}
         <div class="amount-sub">
-          =${sums.Courses}+${sums.Indulgence}+${sums.Essentials}+${sums.Moves}
+        =${sums.Courses}+${sums.Indulgence}+${sums.Essentials}+${sums.Moves}
         </div>
       </td>
     </tr>`;
@@ -248,8 +262,7 @@ document.querySelectorAll(".btn").forEach(btn=>{
 
 // 删除
 deleteBtn.onclick=()=>{
-  const key=datePicker.value;
-  delete data[key];
+  delete data[datePicker.value];
   localStorage.setItem("records",JSON.stringify(data));
   renderTable();
   renderSummary();
@@ -264,7 +277,7 @@ exportBtn.onclick=()=>{
   a.click();
 };
 
-// 日期切换
+// 日期
 datePicker.onchange=renderTable;
 
 // 滑动
@@ -280,7 +293,6 @@ document.addEventListener("touchend",e=>{
 // 初始化
 renderTable();
 renderSummary();
-
 </script>
 
 </body>
