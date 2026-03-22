@@ -5,98 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>$ Recorder</title>
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  overflow: hidden;
-}
+body { margin:0; font-family:Arial,sans-serif; background:#f5f5f5; }
+header { text-align:center; padding:10px; }
+header h1 { margin:0; font-weight:bold; color:black; }
+header span { color:gray; font-size:14px; }
 
-header {
-  text-align: center;
-  padding: 10px;
-}
+.container { display:flex; width:200%; height:calc(100vh - 60px); transition: transform 0.3s ease; }
+.page { width:100%; padding:14px; box-sizing:border-box; overflow:auto; }
 
-header h1 {
-  margin: 0;
-  font-weight: bold;
-  color: black;
-}
+/* 日期选择框 */
+#datePicker { font-size:14px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; margin-bottom:10px; display:block; margin-left:auto; margin-right:auto; }
 
-header span {
-  color: gray;
-  font-size: 14px;
-}
+/* 按钮 2列3行 */
+.buttons { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(3, auto); gap:10px; margin-top:20px; }
+.btn { padding:15px; border:none; border-radius:12px; font-size:16px; font-weight:bold; color:white; cursor:pointer; }
+.pink{background:#ff7eb3;} .orange{background:#ff9a3c;} .blue{background:#4da6ff;} .green{background:#4cd964;} 
+.gray-btn{background:#999;} .delete-btn{color:white;}
 
-.container {
-  display: flex;
-  width: 200%;
-  height: calc(100vh - 60px);
-  transition: transform 0.4s ease;
-}
+/* 表格 */
+table { width:100%; border-collapse:collapse; margin-top:10px; background:white; border-radius:8px; table-layout:fixed; }
+th:nth-child(1), td:nth-child(1){ width:30%; }
+th:nth-child(2), td:nth-child(2){ width:35%; }
+th:nth-child(3), td:nth-child(3){ width:35%; }
+td,th { padding:5px; text-align:center; font-size:12px; border-bottom:1px solid #ddd; }
+.amount-sub{ font-size:11px; color:gray; }
+.total-row{ background:#fafafa; font-weight:bold; }
+.residual{ font-size:11px; color:gray; }
 
-.page {
-  width: 100%;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-/* 2x3 按钮布局 */
-.buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: auto auto;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.btn {
-  padding: 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: bold;
-  color: white;
-  cursor: pointer;
-}
-
-.pink { background: #ff7eb3; }
-.orange { background: #ff9a3c; }
-.blue { background: #4da6ff; }
-.green { background: #4cd964; }
-.gray-btn { background: #999; }
-.delete-btn { color: white; }
-
-table {
-  width: 100%;
-  margin-top: 20px;
-  border-collapse: collapse;
-}
-
-td, th {
-  border-bottom: 1px solid #ddd;
-  padding: 10px;
-  text-align: center;
-}
-
-#exportBtn {
-  /* 已作为彩色按钮放置，不需要这里 */
-}
-
-pre {
-  white-space: pre-wrap;
-  padding: 10px;
-}
-
-#datePicker {
-  margin-top: 15px;
-  font-size: 14px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
 </style>
 </head>
-
 <body>
 
 <header>
@@ -105,23 +42,16 @@ pre {
 </header>
 
 <div class="container" id="container">
-
   <!-- Page 1 -->
   <div class="page">
-    <!-- 日期选择 -->
     <input type="date" id="datePicker">
-
     <table>
       <thead>
-        <tr>
-          <th>Type</th>
-          <th>Amount</th>
-        </tr>
+        <tr><th>Type</th><th>Day TOTAL</th><th>Month TOTAL</th></tr>
       </thead>
       <tbody id="recordTable"></tbody>
     </table>
 
-    <!-- 六个按钮 2x3 -->
     <div class="buttons">
       <button class="btn pink" data-type="Courses">Courses</button>
       <button class="btn orange" data-type="Indulgence">Indulgence</button>
@@ -136,109 +66,111 @@ pre {
   <div class="page">
     <pre id="output"></pre>
   </div>
-
 </div>
 
 <script>
 // ===== 时间 =====
-function updateTime() {
-  document.getElementById("time").innerText =
-    new Date().toLocaleString();
-}
-setInterval(updateTime, 1000);
-updateTime();
+function updateTime(){ document.getElementById("time").innerText=new Date().toLocaleString(); }
+setInterval(updateTime,1000); updateTime();
 
 // ===== 数据 =====
-let data = JSON.parse(localStorage.getItem("records")) || {};
-
-// ===== 日期 =====
-const datePicker = document.getElementById("datePicker");
-const today = new Date().toISOString().split("T")[0];
-datePicker.value = today;
+let data=JSON.parse(localStorage.getItem("records"))||{};
+let currentDate=new Date();
+const BASE_DAY=100;
+const BASE_MONTH=700;
+const types=["Courses","Indulgence","Essentials","Moves"];
+const datePicker=document.getElementById("datePicker");
+datePicker.value=currentDate.toISOString().split("T")[0];
 
 // ===== 渲染表格 =====
-function renderTable() {
-  const table = document.getElementById("recordTable");
-  table.innerHTML = "";
+function renderTable(){
+  const table=document.getElementById("recordTable");
+  table.innerHTML="";
+  const key=datePicker.value;
+  const dayList=data[key]||[];
 
-  const records = data[datePicker.value] || [];
+  // 计算当前月各type总和
+  const month=new Date(key).getMonth();
+  let monthTotals={}; types.forEach(t=>monthTotals[t]=0);
+  for(let k in data){
+    let d=new Date(k);
+    if(d.getMonth()===month){
+      data[k].forEach(i=>{ monthTotals[i.type]+=i.amount; });
+    }
+  }
+  const monthSum=Object.values(monthTotals).reduce((a,b)=>a+b,0);
 
-  records.forEach(item => {
-    table.innerHTML += `
-      <tr>
-        <td>${item.type}</td>
-        <td>${item.amount}</td>
-      </tr>
-    `;
+  let dayTotal=0;
+  types.forEach(type=>{
+    const values=dayList.filter(i=>i.type===type).map(i=>i.amount);
+    const sum=values.reduce((a,b)=>a+b,0);
+    dayTotal+=sum;
+    const monthSumType=monthTotals[type];
+    const percent=monthSum?Math.round(monthSumType/monthSum*100):0;
+    table.innerHTML+=`<tr>
+      <td>${type}</td>
+      <td>${sum}<div class="amount-sub">${values.length? "="+values.join("+"):""}</div></td>
+      <td>${monthSumType}<div class="amount-sub">${percent}%</div></td>
+    </tr>`;
   });
+
+  const residualDay=BASE_DAY-dayTotal;
+  const residualMonth=BASE_MONTH-monthSum;
+  table.innerHTML+=`<tr class="total-row">
+    <td>Day TOTAL</td>
+    <td>${dayTotal}<div class="residual">Residuals=${residualDay}</div></td>
+    <td>${monthSum}<div class="residual">residual=${BASE_MONTH}-${monthSum}=${residualMonth}</div></td>
+  </tr>`;
 }
 
-// ===== 输入按钮 =====
-document.querySelectorAll(".btn").forEach(btn => {
-  btn.onclick = () => {
-    if(btn.id === "deleteBtn" || btn.id === "exportBtn") return;
-
-    const type = btn.dataset.type;
-    const input = prompt(`Enter amount for ${type}:`);
-
-    if (!/^-?\d+$/.test(input)) {
-      alert("❌ Only numbers allowed!");
-      return;
-    }
-
-    const date = datePicker.value;
-
-    if (!data[date]) data[date] = [];
-
-    data[date].push({
-      type,
-      amount: Number(input)
-    });
-
-    localStorage.setItem("records", JSON.stringify(data));
+// ===== 输入 =====
+document.querySelectorAll(".btn").forEach(btn=>{
+  btn.onclick=()=>{
+    if(btn.id==="deleteBtn"||btn.id==="exportBtn") return;
+    let v=prompt("Enter amount for "+btn.dataset.type);
+    if(!/^-?\d+$/.test(v)) return;
+    const key=datePicker.value;
+    if(!data[key]) data[key]=[];
+    data[key].push({type:btn.dataset.type, amount:Number(v)});
+    localStorage.setItem("records",JSON.stringify(data));
     renderTable();
-  };
+  }
 });
 
 // ===== Delete =====
-document.getElementById("deleteBtn").onclick = () => {
-  const date = datePicker.value;
-  if(data[date]) delete data[date];
-  localStorage.setItem("records", JSON.stringify(data));
+document.getElementById("deleteBtn").onclick=()=>{
+  const key=datePicker.value;
+  if(data[key]) delete data[key];
+  localStorage.setItem("records",JSON.stringify(data));
   renderTable();
-};
+}
 
 // ===== Export =====
-document.getElementById("exportBtn").onclick = () => {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "records.json";
+document.getElementById("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="records.json";
   a.click();
-};
+  document.getElementById("output").textContent=JSON.stringify(data,null,2);
+}
 
 // ===== 日期变化 =====
-datePicker.onchange = renderTable;
+datePicker.onchange=renderTable;
 
-// ===== 滑动切换 =====
-let startX = 0;
-let currentPage = 0;
-const container = document.getElementById("container");
-
-document.addEventListener("touchstart", e => {
-  startX = e.touches[0].clientX;
-});
-
-document.addEventListener("touchend", e => {
-  let diff = startX - e.changedTouches[0].clientX;
-  if (diff > 50) currentPage = 1;
-  if (diff < -50) currentPage = 0;
-  container.style.transform = `translateX(-${currentPage * 100}%)`;
+// ===== 页面滑动 =====
+let startX=0, currentPage=0;
+const container=document.getElementById("container");
+document.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
+document.addEventListener("touchend",e=>{
+  let diff=startX-e.changedTouches[0].clientX;
+  if(diff>50) currentPage=1;
+  if(diff<-50) currentPage=0;
+  container.style.transform=`translateX(-${currentPage*100}%)`;
 });
 
 // 初始化
 renderTable();
 </script>
-
 </body>
 </html>
