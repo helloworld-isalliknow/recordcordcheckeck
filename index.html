@@ -80,6 +80,14 @@ td,th {
 .delete-btn{background:#999;}
 .gray-btn{background:#ccc;color:white;}
 </style>
+
+<!-- ✅ PWA配置 -->
+<meta name="theme-color" content="#f5f5f5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="$ Recorder">
+<link rel="apple-touch-icon" href="icon1.png">
+
 </head>
 
 <body>
@@ -160,7 +168,6 @@ function renderTable(){
   const monthSum=Object.values(monthTotals).reduce((a,b)=>a+b,0);
   let dayTotal=0;
 
-  // ✅ 前四个Type + 月百分比
   types.forEach(type=>{
     const values=dayList.filter(i=>i.type===type).map(i=>i.amount);
     const sum=values.reduce((a,b)=>a+b,0);
@@ -179,7 +186,6 @@ function renderTable(){
     </tr>`;
   });
 
-  // ===== Sport&Rest 行（改为百分比）=====
   const monthDays=getMonthDays(key);
   const totalTarget = monthDays * 2;
   const used = monthSport + monthRest;
@@ -195,12 +201,12 @@ function renderTable(){
   table.innerHTML+=`
   <tr class="total-row">
     <td>Day TOTAL</td>
-    <td>${dayTotal}</td>
-    <td>${monthSum}</td>
+    <td>${dayTotal}<div class="residual">Residuals=${BASE_DAY-dayTotal}</div></td>
+    <td>${monthSum}<div class="residual">Residuals=${BASE_MONTH-monthSum}</div></td>
   </tr>`;
 }
 
-// ===== 普通按钮 =====
+// ===== 按钮逻辑 =====
 document.querySelectorAll(".btn").forEach(btn=>{
   btn.onclick=()=>{
     if(btn.id==="deleteBtn"||btn.id==="exportBtn"||btn.id==="sportBtn"||btn.id==="restBtn") return;
@@ -217,7 +223,6 @@ document.querySelectorAll(".btn").forEach(btn=>{
   }
 });
 
-// ===== Sport / Rest =====
 sportBtn.onclick=()=>{
   const key=datePicker.value;
   if(!data[key]) data[key]={list:[],sport:0,rest:0};
@@ -234,14 +239,12 @@ restBtn.onclick=()=>{
   renderTable();
 };
 
-// ===== 删除 =====
 deleteBtn.onclick=()=>{
   delete data[datePicker.value];
   localStorage.setItem("records",JSON.stringify(data));
   renderTable();
 };
 
-// ===== 导出 =====
 exportBtn.onclick=()=>{
   const blob=new Blob([JSON.stringify(data,null,2)]);
   const a=document.createElement("a");
@@ -253,6 +256,38 @@ exportBtn.onclick=()=>{
 datePicker.onchange=renderTable;
 
 renderTable();
+
+
+// ===== ✅ 内联 PWA（关键）=====
+const manifest = {
+  name: "$ Recorder",
+  short_name: "Recorder",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#f5f5f5",
+  theme_color: "#f5f5f5",
+  icons: [
+    { src: "icon1.png", sizes: "192x192", type: "image/png" },
+    { src: "icon1.png", sizes: "512x512", type: "image/png" }
+  ]
+};
+
+const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+const manifestURL = URL.createObjectURL(blob);
+const link = document.createElement("link");
+link.rel = "manifest";
+link.href = manifestURL;
+document.head.appendChild(link);
+
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    self.addEventListener("install", e => self.skipWaiting());
+    self.addEventListener("fetch", e => {});
+  `;
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL);
+}
 </script>
 
 </body>
