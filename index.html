@@ -11,36 +11,42 @@ body {
   font-family:Arial;
   background:#f5f5f5;
   height:100vh;
+  overflow:hidden; /* ✅ 禁止页面整体滚动 */
   display:flex;
   flex-direction:column;
 }
+
 header {
   height:60px;
   text-align:center;
   padding:5px;
   flex-shrink:0;
 }
-header h1 { margin:0; }
-header span { color:gray; font-size:14px; }
+
 .container {
   display:flex;
-  width:100%;
-  flex:1;
+  width:200%;
+  height:100%;
+  transition:0.3s;
 }
+
 .page {
   width:100%;
+  height:100%;
   display:flex;
   flex-direction:column;
 }
+
 #datePicker {
-  margin:15px auto;
-  padding:6px;
-  font-size:14px;
+  margin:10px auto;
 }
+
+/* ✅ 表格区域占满剩余空间 */
 .table-wrap {
+  flex:1;
   overflow-y:auto;
-  flex:0 0 auto;
 }
+
 table {
   width:100%;
   background:white;
@@ -52,22 +58,23 @@ td,th {
   font-size:14px;
   border-bottom:1px solid #ddd;
 }
+
 .amount-sub { font-size:11px; color:gray; }
 .residual { font-size:11px; color:gray; }
 .total-row { font-weight:bold; background:#fafafa; }
 
+/* 按钮 */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
-  grid-template-rows:repeat(4,auto);
   gap:8px;
-  padding:10px 0;
+  padding:10px;
+  flex-shrink:0;
 }
 .btn {
   padding:10px;
   border:none;
   border-radius:10px;
-  font-size:14px;
   font-weight:bold;
   color:white;
 }
@@ -79,18 +86,22 @@ td,th {
 .lightgreen{background:#8fd19e;}
 .delete-btn{background:#999;}
 .gray-btn{background:#ccc;color:white;}
+
 </style>
 </head>
 
 <body>
+
 <header>
 <h1>$ Recorder</h1>
 <span id="time"></span>
 </header>
 
-<div class="container">
+<div class="container" id="container">
 
+<!-- Page1 -->
 <div class="page">
+
 <input type="date" id="datePicker">
 
 <div class="table-wrap">
@@ -116,6 +127,19 @@ td,th {
 </div>
 
 </div>
+
+<!-- Page2 -->
+<div class="page">
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Date</th><th>Day TOTAL</th></tr>
+</thead>
+<tbody id="summaryTable"></tbody>
+</table>
+</div>
+</div>
+
 </div>
 
 <script>
@@ -134,12 +158,10 @@ function getMonthDays(dateStr){
   return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
 }
 
-// ===== 渲染 =====
+// ===== Page1 =====
 function renderTable(){
   const key=datePicker.value;
-  const dayList=data[key]?.list||[];
-  const sport=data[key]?.sport||0;
-  const rest=data[key]?.rest||0;
+  const obj=data[key]||{list:[],sport:0,rest:0};
 
   const table=document.getElementById("recordTable");
   table.innerHTML="";
@@ -157,11 +179,10 @@ function renderTable(){
     }
   }
 
-  const monthSum=Object.values(monthTotals).reduce((a,b)=>a+b,0);
   let dayTotal=0;
 
   types.forEach(type=>{
-    const values=dayList.filter(i=>i.type===type).map(i=>i.amount);
+    const values=obj.list.filter(i=>i.type===type).map(i=>i.amount);
     const sum=values.reduce((a,b)=>a+b,0);
     dayTotal+=sum;
 
@@ -173,26 +194,55 @@ function renderTable(){
     </tr>`;
   });
 
-  // ===== Sport&Rest 行 =====
+  // Sport&Rest
   const monthDays=getMonthDays(key);
-  const remain = monthDays*2 - (monthSport+monthRest);
+  const totalTarget=monthDays*2;
+  const used=monthSport+monthRest;
+  const percent=totalTarget?Math.round((totalTarget-used)/totalTarget*100):0;
 
   table.innerHTML+=`
   <tr>
     <td>Sport&Rest</td>
-    <td>${sport}+${rest}</td>
-    <td>${remain}</td>
+    <td>${obj.sport}+${obj.rest}</td>
+    <td>${percent}%</td>
   </tr>`;
+
+  const monthSum=Object.values(monthTotals).reduce((a,b)=>a+b,0);
 
   table.innerHTML+=`
   <tr class="total-row">
     <td>Day TOTAL</td>
-    <td>${dayTotal}</td>
-    <td>${monthSum}</td>
+    <td>${dayTotal}<div class="residual">Residuals=${BASE_DAY-dayTotal}</div></td>
+    <td>${monthSum}<div class="residual">Residuals=${BASE_MONTH-monthSum}</div></td>
   </tr>`;
 }
 
-// ===== 普通按钮 =====
+// ===== Page2 =====
+function renderSummary(){
+  const table=document.getElementById("summaryTable");
+  table.innerHTML="";
+
+  Object.keys(data).sort().forEach(date=>{
+    const obj=data[date];
+    if(!obj.list || !obj.list.length) return;
+
+    let sums={Courses:0,Indulgence:0,Essentials:0,Moves:0};
+    obj.list.forEach(i=>sums[i.type]+=i.amount);
+    const total=Object.values(sums).reduce((a,b)=>a+b,0);
+
+    table.innerHTML+=`
+    <tr>
+      <td>${date}</td>
+      <td>${total}
+        <div class="amount-sub">
+        =${sums.Courses}+${sums.Indulgence}+${sums.Essentials}+${sums.Moves}
+        </div>
+      </td>
+    </tr>`;
+  });
+}
+
+// ===== 按钮 =====
 document.querySelectorAll(".btn").forEach(btn=>{
   btn.onclick=()=>{
     if(btn.id==="deleteBtn"||btn.id==="exportBtn"||btn.id==="sportBtn"||btn.id==="restBtn") return;
@@ -205,11 +255,10 @@ document.querySelectorAll(".btn").forEach(btn=>{
 
     data[key].list.push({type:btn.dataset.type,amount:Number(v)});
     localStorage.setItem("records",JSON.stringify(data));
-    renderTable();
+    renderTable(); renderSummary();
   }
 });
 
-// ===== Sport / Rest =====
 sportBtn.onclick=()=>{
   const key=datePicker.value;
   if(!data[key]) data[key]={list:[],sport:0,rest:0};
@@ -226,14 +275,12 @@ restBtn.onclick=()=>{
   renderTable();
 };
 
-// ===== 删除 =====
 deleteBtn.onclick=()=>{
   delete data[datePicker.value];
   localStorage.setItem("records",JSON.stringify(data));
-  renderTable();
+  renderTable(); renderSummary();
 };
 
-// ===== 导出 =====
 exportBtn.onclick=()=>{
   const blob=new Blob([JSON.stringify(data,null,2)]);
   const a=document.createElement("a");
@@ -242,9 +289,20 @@ exportBtn.onclick=()=>{
   a.click();
 };
 
-datePicker.onchange=renderTable;
+datePicker.onchange=()=>{renderTable();renderSummary();};
+
+// 滑动
+let startX=0,page=0;
+document.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
+document.addEventListener("touchend",e=>{
+  let dx=startX-e.changedTouches[0].clientX;
+  if(dx>50) page=1;
+  if(dx<-50) page=0;
+  container.style.transform=`translateX(-${page*100}%)`;
+});
 
 renderTable();
+renderSummary();
 </script>
 
 </body>
