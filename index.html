@@ -24,28 +24,22 @@ header h1 { margin:0; }
 header span { color:gray; font-size:14px; }
 .container {
   display:flex;
-  width:200%;
+  width:100%;
   flex:1;
-  transition:0.3s;
-  overflow:hidden;
 }
 .page {
   width:100%;
   display:flex;
   flex-direction:column;
-  box-sizing: border-box;
-  height:100%;
 }
 #datePicker {
-  margin:15px auto; /* 上下间距更宽松 */
+  margin:15px auto;
   padding:6px;
   font-size:14px;
-  flex-shrink:0;
 }
 .table-wrap {
   overflow-y:auto;
-  flex: 0 0 auto; /* 高度自适应，不撑满剩余空间 */
-  margin-bottom: 0; /* 移除多余底部间距 */
+  flex:0 0 auto;
 }
 table {
   width:100%;
@@ -61,18 +55,13 @@ td,th {
 .amount-sub { font-size:11px; color:gray; }
 .residual { font-size:11px; color:gray; }
 .total-row { font-weight:bold; background:#fafafa; }
-.big-table th:nth-child(1), .big-table td:nth-child(1){ width:30%; }
-.big-table th:nth-child(2), .big-table td:nth-child(2){ width:70%; }
 
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
-  grid-template-rows:repeat(3,auto);
+  grid-template-rows:repeat(4,auto);
   gap:8px;
   padding:10px 0;
-  background:#f5f5f5;
-  flex-shrink:0;
-  margin-top: 10px; /* 紧贴表格 */
 }
 .btn {
   padding:10px;
@@ -86,22 +75,11 @@ td,th {
 .orange{background:#ff9a3c;}
 .blue{background:#4da6ff;}
 .green{background:#4cd964;}
+.teal{background:#20c997;}
+.lightgreen{background:#8fd19e;}
 .delete-btn{background:#999;}
 .gray-btn{background:#ccc;color:white;}
-
-/* 第二页表格位置修正 */
-.page:last-child {
-  padding-top:60px; /* 表格从标题下方开始 */
-  overflow-y: auto;  /* 支持滚动 */
-}
 </style>
-
-<!-- PWA 配置 -->
-<meta name="theme-color" content="#f5f5f5">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="$ Recorder">
-<link rel="apple-touch-icon" href="icon1.png">
 </head>
 
 <body>
@@ -110,11 +88,11 @@ td,th {
 <span id="time"></span>
 </header>
 
-<div class="container" id="container">
+<div class="container">
 
-<!-- Page1 -->
 <div class="page">
 <input type="date" id="datePicker">
+
 <div class="table-wrap">
 <table>
 <thead>
@@ -123,35 +101,26 @@ td,th {
 <tbody id="recordTable"></tbody>
 </table>
 </div>
+
 <div class="buttons">
 <button class="btn pink" data-type="Courses">Courses</button>
 <button class="btn orange" data-type="Indulgence">Indulgence</button>
 <button class="btn blue" data-type="Essentials">Essentials</button>
 <button class="btn green" data-type="Moves">Moves</button>
+
+<button class="btn teal" id="sportBtn">Sport</button>
+<button class="btn lightgreen" id="restBtn">Rest</button>
+
 <button class="btn delete-btn" id="deleteBtn">Delete</button>
 <button class="btn gray-btn" id="exportBtn">Export</button>
 </div>
-</div>
 
-<!-- Page2 -->
-<div class="page">
-<div class="table-wrap">
-<table class="big-table">
-<thead>
-<tr><th>Date</th><th>Day Total</th></tr>
-</thead>
-<tbody id="summaryTable"></tbody>
-</table>
 </div>
-</div>
-
 </div>
 
 <script>
-// 时间显示
 setInterval(()=>time.innerText=new Date().toLocaleString(),1000);
 
-// 数据初始化
 let data=JSON.parse(localStorage.getItem("records"))||{};
 const types=["Courses","Indulgence","Essentials","Moves"];
 const BASE_DAY=100;
@@ -160,88 +129,111 @@ const BASE_MONTH=700;
 const datePicker=document.getElementById("datePicker");
 datePicker.value=new Date().toISOString().split("T")[0];
 
-// ===== Page1 表格渲染 =====
+function getMonthDays(dateStr){
+  const d=new Date(dateStr);
+  return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+}
+
+// ===== 渲染 =====
 function renderTable(){
   const key=datePicker.value;
-  const dayList=data[key]||[];
+  const dayList=data[key]?.list||[];
+  const sport=data[key]?.sport||0;
+  const rest=data[key]?.rest||0;
+
   const table=document.getElementById("recordTable");
   table.innerHTML="";
+
   const month=new Date(key).getMonth();
   let monthTotals={Courses:0,Indulgence:0,Essentials:0,Moves:0};
+  let monthSport=0, monthRest=0;
+
   for(let k in data){
     let d=new Date(k);
     if(d.getMonth()===month){
-      data[k].forEach(i=>monthTotals[i.type]+=i.amount);
+      (data[k].list||[]).forEach(i=>monthTotals[i.type]+=i.amount);
+      monthSport+=data[k].sport||0;
+      monthRest+=data[k].rest||0;
     }
   }
+
   const monthSum=Object.values(monthTotals).reduce((a,b)=>a+b,0);
   let dayTotal=0;
+
   types.forEach(type=>{
     const values=dayList.filter(i=>i.type===type).map(i=>i.amount);
     const sum=values.reduce((a,b)=>a+b,0);
     dayTotal+=sum;
-    const percent=monthSum?Math.round(monthTotals[type]/monthSum*100):0;
+
     table.innerHTML+=`
     <tr>
       <td>${type}</td>
       <td>${sum}<div class="amount-sub">${values.length?"="+values.join("+"):""}</div></td>
-      <td>${monthTotals[type]}<div class="amount-sub">${percent}%</div></td>
+      <td>${monthTotals[type]}</td>
     </tr>`;
   });
+
+  // ===== Sport&Rest 行 =====
+  const monthDays=getMonthDays(key);
+  const remain = monthDays*2 - (monthSport+monthRest);
+
+  table.innerHTML+=`
+  <tr>
+    <td>Sport&Rest</td>
+    <td>${sport}+${rest}</td>
+    <td>${remain}</td>
+  </tr>`;
+
   table.innerHTML+=`
   <tr class="total-row">
     <td>Day TOTAL</td>
-    <td>${dayTotal}<div class="residual">Residuals=${BASE_DAY-dayTotal}</div></td>
-    <td>${monthSum}<div class="residual">Residuals=${BASE_MONTH-monthSum}</div></td>
+    <td>${dayTotal}</td>
+    <td>${monthSum}</td>
   </tr>`;
 }
 
-// ===== Page2 大表渲染 =====
-function renderSummary(){
-  const table=document.getElementById("summaryTable");
-  table.innerHTML="";
-  const dates=Object.keys(data)
-    .filter(d=>data[d] && data[d].length)
-    .sort();
-  dates.forEach(date=>{
-    let sums={Courses:0,Indulgence:0,Essentials:0,Moves:0};
-    data[date].forEach(i=>{ sums[i.type]+=i.amount; });
-    const total=Object.values(sums).reduce((a,b)=>a+b,0);
-    table.innerHTML+=`
-    <tr>
-      <td>${date}</td>
-      <td>
-        ${total}
-        <div class="amount-sub">
-        =${sums.Courses}+${sums.Indulgence}+${sums.Essentials}+${sums.Moves}
-        </div>
-      </td>
-    </tr>`;
-  });
-}
-
-// ===== 按钮逻辑 =====
+// ===== 普通按钮 =====
 document.querySelectorAll(".btn").forEach(btn=>{
   btn.onclick=()=>{
-    if(btn.id==="deleteBtn"||btn.id==="exportBtn") return;
+    if(btn.id==="deleteBtn"||btn.id==="exportBtn"||btn.id==="sportBtn"||btn.id==="restBtn") return;
+
     let v=prompt("Enter amount:");
     if(!/^-?\d+$/.test(v)) return;
+
     const key=datePicker.value;
-    if(!data[key]) data[key]=[];
-    data[key].push({type:btn.dataset.type,amount:Number(v)});
+    if(!data[key]) data[key]={list:[],sport:0,rest:0};
+
+    data[key].list.push({type:btn.dataset.type,amount:Number(v)});
     localStorage.setItem("records",JSON.stringify(data));
     renderTable();
-    renderSummary();
   }
 });
 
+// ===== Sport / Rest =====
+sportBtn.onclick=()=>{
+  const key=datePicker.value;
+  if(!data[key]) data[key]={list:[],sport:0,rest:0};
+  data[key].sport=1;
+  localStorage.setItem("records",JSON.stringify(data));
+  renderTable();
+};
+
+restBtn.onclick=()=>{
+  const key=datePicker.value;
+  if(!data[key]) data[key]={list:[],sport:0,rest:0};
+  data[key].rest=1;
+  localStorage.setItem("records",JSON.stringify(data));
+  renderTable();
+};
+
+// ===== 删除 =====
 deleteBtn.onclick=()=>{
   delete data[datePicker.value];
   localStorage.setItem("records",JSON.stringify(data));
   renderTable();
-  renderSummary();
 };
 
+// ===== 导出 =====
 exportBtn.onclick=()=>{
   const blob=new Blob([JSON.stringify(data,null,2)]);
   const a=document.createElement("a");
@@ -252,50 +244,7 @@ exportBtn.onclick=()=>{
 
 datePicker.onchange=renderTable;
 
-// 页面滑动
-let startX=0,page=0;
-document.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
-document.addEventListener("touchend",e=>{
-  let dx=startX-e.changedTouches[0].clientX;
-  if(dx>50) page=1;
-  if(dx<-50) page=0;
-  container.style.transform=`translateX(-${page*100}%)`;
-});
-
 renderTable();
-renderSummary();
-
-// ==================== PWA 集成 ====================
-const manifest = {
-  name: "$ Recorder",
-  short_name: "Recorder",
-  start_url: "./",
-  display: "standalone",
-  background_color: "#f5f5f5",
-  theme_color: "#f5f5f5",
-  icons: [
-    { src: "icon1.png", sizes: "512x512", type: "image/png" }
-  ]
-};
-const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-const manifestURL = URL.createObjectURL(manifestBlob);
-const link = document.createElement('link');
-link.rel = 'manifest';
-link.href = manifestURL;
-document.head.appendChild(link);
-
-// 内联 Service Worker
-if ('serviceWorker' in navigator) {
-  const swCode = `
-  const CACHE_NAME="recorder-v1";
-  const urlsToCache=["./"];
-  self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache))); });
-  self.addEventListener("fetch", e => { e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))); });
-  `;
-  const swBlob = new Blob([swCode], {type:'application/javascript'});
-  const swURL = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swURL);
-}
 </script>
 
 </body>
