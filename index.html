@@ -132,7 +132,7 @@ setInterval(()=>time.innerText=new Date().toLocaleString(),1000);
 let data=JSON.parse(localStorage.getItem("records"))||{};
 const types=["Courses","Indulgence","Essentials","Moves"];
 const BASE_DAY=100;
-const BASE_MONTH=700;
+const BASE_MONTH=3000;
 
 const datePicker=document.getElementById("datePicker");
 datePicker.value=new Date().toISOString().split("T")[0];
